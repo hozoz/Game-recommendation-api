@@ -1,0 +1,1139 @@
+<!--
+  =====================================================================
+  MY NAGHI — Customer Feedback Widget
+  ---------------------------------------------------------------------
+  A self-contained, dependency-free feedback popup for mynaghi.sa.
+  Collects a 2-step feedback flow (emoji rating + context-aware
+  follow-up) and submits it to Google Forms. Bilingual (EN / AR) with
+  full RTL support and automatic user-type detection from the URL.
+
+  HOW TO USE
+    - Standalone test:   open this file directly in a browser.
+    - Production embed:   see INTEGRATION_GUIDE.md (3 methods).
+
+  EVERYTHING IS CONFIGURABLE
+    - Colors ......... :root CSS variables (top of <style>)
+    - Text / i18n .... MYNAGHI_FEEDBACK.i18n
+    - Questions ...... MYNAGHI_FEEDBACK.questions
+    - Google Form .... MYNAGHI_FEEDBACK.form
+    - User types ..... MYNAGHI_FEEDBACK.detectUserType()
+
+  No build step. No frameworks. Vanilla JS only.
+  =====================================================================
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MY NAGHI — Feedback Widget</title>
+
+  <!-- Space Grotesk: the single typeface for the whole widget -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    /* ============================================================
+       DESIGN TOKENS  —  change these to re-theme the whole widget
+       ============================================================ */
+    :root {
+      /* Brand palette */
+      --mn-primary:        #964BFA;  /* Lilac — CTAs, accents, selection */
+      --mn-primary-dark:   #7d34e0;  /* Hover / pressed lilac            */
+      --mn-secondary:      #6B7D99;  /* Blue-grey — secondary text/UI    */
+      --mn-secondary-soft: #9AA7BC;  /* Lighter blue-grey — footer/hints */
+      --mn-sand:           #EDE5D0;  /* Warm sand — header/card bg        */
+      --mn-text:           #1A1A1A;  /* Primary text                     */
+      --mn-white:          #FFFFFF;
+      --mn-grey-50:        #F5F5F5;  /* Footer / subtle fills            */
+      --mn-grey-100:       #EDEDED;
+      --mn-grey-200:       #E2E2E2;  /* Borders                          */
+      --mn-grey-900:       #2A2A2A;
+
+      /* Shape */
+      --mn-radius-ui:   8px;
+      --mn-radius-card: 16px;
+      --mn-radius-pill: 9999px;
+
+      /* Elevation */
+      --mn-shadow:        0 4px 16px rgba(26, 26, 26, 0.10);
+      --mn-shadow-accent: 0 4px 24px rgba(150, 75, 250, 0.20);
+
+      /* Motion */
+      --mn-ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+      --mn-transition: 200ms var(--mn-ease);
+
+      /* Typography */
+      --mn-font: "Space Grotesk", "Segoe UI", system-ui, -apple-system, sans-serif;
+
+      /* Layering — high enough to sit above typical site chrome */
+      --mn-z: 2147483000;
+    }
+
+    /* ============================================================
+       SCOPING  —  every rule is prefixed with #mn-feedback-root so
+       the widget never leaks styles into the host page.
+       ============================================================ */
+    #mn-feedback-root,
+    #mn-feedback-root *,
+    #mn-feedback-root *::before,
+    #mn-feedback-root *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    #mn-feedback-root {
+      font-family: var(--mn-font);
+      color: var(--mn-text);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    /* ---------- Floating trigger button ---------- */
+    #mn-feedback-root .mn-fab {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      inset-inline-end: 24px;   /* flips to bottom-left under RTL */
+      inset-inline-start: auto;
+      z-index: var(--mn-z);
+      width: 56px;
+      height: 56px;
+      border: none;
+      border-radius: var(--mn-radius-pill);
+      background: var(--mn-primary);
+      color: var(--mn-white);
+      font-size: 26px;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: var(--mn-shadow-accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform var(--mn-transition), box-shadow var(--mn-transition),
+        opacity var(--mn-transition), visibility var(--mn-transition);
+    }
+    #mn-feedback-root .mn-fab:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 28px rgba(150, 75, 250, 0.32);
+    }
+    #mn-feedback-root .mn-fab:active { transform: translateY(-1px); }
+    #mn-feedback-root .mn-fab:focus-visible {
+      outline: 3px solid var(--mn-primary-dark);
+      outline-offset: 3px;
+    }
+    /* Hidden while the modal is open */
+    #mn-feedback-root.mn-open .mn-fab {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    /* ---------- Backdrop ---------- */
+    #mn-feedback-root .mn-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: var(--mn-z);
+      background: rgba(26, 26, 26, 0.5);
+      -webkit-backdrop-filter: blur(4px);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity var(--mn-transition), visibility var(--mn-transition);
+    }
+    #mn-feedback-root.mn-open .mn-backdrop {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* ---------- Modal card ---------- */
+    #mn-feedback-root .mn-modal {
+      width: 100%;
+      max-width: 448px;
+      max-height: calc(100vh - 32px);
+      overflow-y: auto;
+      background: var(--mn-white);
+      border-radius: var(--mn-radius-card);
+      box-shadow: var(--mn-shadow);
+      transform: translateY(24px) scale(0.98);
+      opacity: 0;
+      transition: transform 250ms var(--mn-ease), opacity 250ms var(--mn-ease);
+    }
+    #mn-feedback-root.mn-open .mn-modal {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+    }
+    /* Respect users who prefer reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      #mn-feedback-root .mn-fab,
+      #mn-feedback-root .mn-backdrop,
+      #mn-feedback-root .mn-modal,
+      #mn-feedback-root .mn-emoji { transition: none; }
+    }
+
+    /* ---------- Header ---------- */
+    #mn-feedback-root .mn-header {
+      position: relative;
+      background: var(--mn-sand);
+      padding: 24px;
+      border-radius: var(--mn-radius-card) var(--mn-radius-card) 0 0;
+    }
+    #mn-feedback-root .mn-title {
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      line-height: 1.25;
+      color: var(--mn-text);
+      padding-inline-end: 36px; /* leave room for the close button */
+    }
+    #mn-feedback-root .mn-subtitle {
+      margin-top: 6px;
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--mn-secondary);
+      line-height: 1.5;
+    }
+    #mn-feedback-root .mn-close {
+      position: absolute;
+      top: 20px;
+      inset-inline-end: 20px;
+      width: 32px;
+      height: 32px;
+      border: none;
+      border-radius: var(--mn-radius-pill);
+      background: rgba(26, 26, 26, 0.06);
+      color: var(--mn-text);
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background var(--mn-transition);
+    }
+    #mn-feedback-root .mn-close:hover { background: rgba(26, 26, 26, 0.12); }
+    #mn-feedback-root .mn-close:focus-visible {
+      outline: 2px solid var(--mn-primary);
+      outline-offset: 2px;
+    }
+
+    /* Language toggle */
+    #mn-feedback-root .mn-lang {
+      display: inline-flex;
+      gap: 4px;
+      margin-top: 16px;
+      background: rgba(255, 255, 255, 0.55);
+      border-radius: var(--mn-radius-pill);
+      padding: 3px;
+    }
+    #mn-feedback-root .mn-lang button {
+      border: none;
+      background: transparent;
+      color: var(--mn-secondary);
+      font-family: var(--mn-font);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      padding: 6px 16px;
+      border-radius: var(--mn-radius-pill);
+      cursor: pointer;
+      transition: background var(--mn-transition), color var(--mn-transition);
+    }
+    #mn-feedback-root .mn-lang button[aria-pressed="true"] {
+      background: var(--mn-primary);
+      color: var(--mn-white);
+    }
+    #mn-feedback-root .mn-lang button:focus-visible {
+      outline: 2px solid var(--mn-primary);
+      outline-offset: 2px;
+    }
+
+    /* ---------- Body / steps ---------- */
+    #mn-feedback-root .mn-body { padding: 32px 24px; }
+    #mn-feedback-root .mn-step { display: none; }
+    #mn-feedback-root .mn-step.mn-active { display: block; }
+
+    /* Step 1 — emoji rating */
+    #mn-feedback-root .mn-emojis {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    #mn-feedback-root .mn-emoji {
+      flex: 0 0 auto;
+      width: 56px;
+      min-height: 76px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      border-radius: var(--mn-radius-ui);
+      padding: 4px 2px;
+      transition: transform var(--mn-transition), opacity var(--mn-transition),
+        background var(--mn-transition);
+    }
+    #mn-feedback-root .mn-emoji .mn-emoji-glyph {
+      font-size: 40px;
+      line-height: 1;
+      opacity: 0.6;
+      transition: opacity var(--mn-transition), transform var(--mn-transition);
+    }
+    #mn-feedback-root .mn-emoji .mn-emoji-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--mn-secondary);
+      text-align: center;
+      line-height: 1.2;
+    }
+    #mn-feedback-root .mn-emoji:hover .mn-emoji-glyph,
+    #mn-feedback-root .mn-emoji:focus-visible .mn-emoji-glyph {
+      opacity: 1;
+      transform: scale(1.25);
+    }
+    #mn-feedback-root .mn-emoji:focus-visible {
+      outline: 2px solid var(--mn-primary);
+      outline-offset: 2px;
+    }
+    #mn-feedback-root .mn-emoji[aria-pressed="true"] {
+      background: rgba(150, 75, 250, 0.10);
+    }
+    #mn-feedback-root .mn-emoji[aria-pressed="true"] .mn-emoji-glyph { opacity: 1; }
+
+    /* Step 2 — follow-up */
+    #mn-feedback-root .mn-question {
+      font-size: 16px;
+      font-weight: 500;
+      line-height: 1.5;
+      color: var(--mn-text);
+      margin-bottom: 16px;
+    }
+    #mn-feedback-root .mn-selected-emoji {
+      font-size: 28px;
+      line-height: 1;
+      margin-bottom: 12px;
+    }
+    #mn-feedback-root .mn-textarea {
+      width: 100%;
+      min-height: 100px;
+      resize: vertical;
+      padding: 12px;
+      font-family: var(--mn-font);
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--mn-text);
+      background: var(--mn-white);
+      border: 1px solid var(--mn-grey-200);
+      border-radius: var(--mn-radius-ui);
+      outline: none;
+      transition: border-color var(--mn-transition), box-shadow var(--mn-transition);
+    }
+    #mn-feedback-root .mn-textarea::placeholder { color: var(--mn-secondary-soft); }
+    #mn-feedback-root .mn-textarea:focus {
+      border-color: var(--mn-primary);
+      box-shadow: 0 0 0 3px rgba(150, 75, 250, 0.12);
+    }
+    #mn-feedback-root .mn-charhint {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--mn-secondary);
+      min-height: 16px;
+    }
+
+    /* Buttons */
+    #mn-feedback-root .mn-btn {
+      width: 100%;
+      border: none;
+      border-radius: var(--mn-radius-ui);
+      font-family: var(--mn-font);
+      cursor: pointer;
+      transition: background var(--mn-transition), transform var(--mn-transition),
+        box-shadow var(--mn-transition), opacity var(--mn-transition);
+    }
+    #mn-feedback-root .mn-btn-primary {
+      margin-top: 16px;
+      padding: 12px;
+      background: var(--mn-primary);
+      color: var(--mn-white);
+      font-size: 14px;
+      font-weight: 600;
+    }
+    #mn-feedback-root .mn-btn-primary:hover:not(:disabled) {
+      background: var(--mn-primary-dark);
+      box-shadow: var(--mn-shadow-accent);
+    }
+    #mn-feedback-root .mn-btn-primary:active:not(:disabled) { transform: scale(0.97); }
+    #mn-feedback-root .mn-btn-primary:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+    }
+    #mn-feedback-root .mn-btn-ghost {
+      margin-top: 8px;
+      padding: 10px;
+      background: transparent;
+      color: var(--mn-secondary);
+      font-size: 14px;
+      font-weight: 500;
+      border: 1px solid var(--mn-grey-200);
+    }
+    #mn-feedback-root .mn-btn-ghost:hover { background: var(--mn-grey-50); }
+    #mn-feedback-root .mn-btn:focus-visible {
+      outline: 2px solid var(--mn-primary);
+      outline-offset: 2px;
+    }
+
+    /* Step 3 — thank you */
+    #mn-feedback-root .mn-thanks { text-align: center; padding: 16px 0; }
+    #mn-feedback-root .mn-thanks .mn-check {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 16px;
+      border-radius: var(--mn-radius-pill);
+      background: rgba(150, 75, 250, 0.12);
+      color: var(--mn-primary);
+      font-size: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #mn-feedback-root .mn-thanks .mn-thanks-msg {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--mn-text);
+    }
+
+    /* ---------- Footer ---------- */
+    #mn-feedback-root .mn-footer {
+      background: var(--mn-grey-50);
+      padding: 16px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--mn-secondary-soft);
+      border-radius: 0 0 var(--mn-radius-card) var(--mn-radius-card);
+    }
+
+    /* ---------- RTL ---------- */
+    #mn-feedback-root[dir="rtl"] .mn-title { padding-inline-end: 36px; }
+    #mn-feedback-root[dir="rtl"] .mn-textarea { text-align: right; }
+
+    /* Visually-hidden helper for screen readers */
+    #mn-feedback-root .mn-sr-only {
+      position: absolute;
+      width: 1px; height: 1px;
+      padding: 0; margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    /* ---------- Small screens ---------- */
+    @media (max-width: 480px) {
+      #mn-feedback-root .mn-body { padding: 24px 20px; }
+      #mn-feedback-root .mn-header { padding: 20px; }
+      #mn-feedback-root .mn-title { font-size: 21px; }
+      #mn-feedback-root .mn-emoji { width: 52px; }
+      #mn-feedback-root .mn-emoji .mn-emoji-glyph { font-size: 34px; }
+      #mn-feedback-root .mn-fab { bottom: 16px; inset-inline-end: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <!--
+    Optional demo scaffolding — only used when the file is opened
+    directly. Delete everything inside <main class="mn-demo"> when
+    embedding on the real site.
+  -->
+  <main class="mn-demo" style="max-width:640px;margin:60px auto;padding:0 20px;font-family:'Space Grotesk',system-ui,sans-serif;color:#1A1A1A;">
+    <h1 style="font-weight:600;letter-spacing:-0.02em;">MY NAGHI Feedback Widget — Demo</h1>
+    <p style="color:#6B7D99;line-height:1.7;">
+      This page exists only to preview the widget. Click the lilac button in the
+      corner. To test user-type detection, add a path to the URL such as
+      <code>#/checkout/</code> or use the manual override:
+      <code>MYNAGHI_FEEDBACK.setUserType('buyers')</code> in the console.
+    </p>
+  </main>
+
+  <!-- =================================================================
+       WIDGET SCRIPT
+       ================================================================= -->
+  <script>
+  (function () {
+    "use strict";
+
+    /* ===============================================================
+       CONFIGURATION  —  the only block most integrators need to edit.
+       =============================================================== */
+    var CONFIG = {
+      /* Google Forms integration.
+         See INTEGRATION_GUIDE.md → "Google Forms Setup" for how to find
+         your form ID and each entry.* field ID. Leave as-is to run in
+         "demo mode" (submissions are logged to the console, not sent). */
+      form: {
+        // Example: "1FAIpQLSd....". Empty string => demo mode.
+        formId: "",
+        // Map each captured field to its Google Forms entry ID.
+        entries: {
+          language: "entry.1000000001",
+          userType: "entry.1000000002",
+          rating:   "entry.1000000003",
+          feedback: "entry.1000000004",
+          timestamp:"entry.1000000005",
+          pageUrl:  "entry.1000000006"
+        }
+      },
+
+      /* Default language when the page language can't be detected.
+         "en" or "ar". */
+      defaultLang: "en",
+
+      /* Force a user type (useful for QA). null = auto-detect from URL. */
+      forceUserType: null,
+
+      /* Auto-close delay (ms) after the thank-you screen appears. */
+      autoCloseMs: 2000,
+
+      /* Minimum characters required before the feedback can be sent. */
+      minChars: 20
+    };
+
+    /* ===============================================================
+       INTERNATIONALISATION  —  every visible string, EN + AR.
+       =============================================================== */
+    var I18N = {
+      en: {
+        dir: "ltr",
+        fabAria: "Open feedback form",
+        title: "How was your experience?",
+        subtitle: "Your feedback helps us improve",
+        close: "Close",
+        step1Legend: "Rate your experience",
+        ratingLabels: ["Very Poor", "Poor", "Okay", "Good", "Excellent"],
+        placeholder: "Your answer...",
+        charHint: function (n) { return n + " more character" + (n === 1 ? "" : "s") + " needed"; },
+        submit: "Send Feedback",
+        sending: "Sending…",
+        back: "Back",
+        thanks: "Thank you for your feedback!",
+        footer: "✓ Powered by MY NAGHI",
+        errorTitle: "Something went wrong",
+        errorBody: "We couldn't send your feedback. Please try again."
+      },
+      ar: {
+        dir: "rtl",
+        fabAria: "افتح نموذج الملاحظات",
+        title: "كيف كانت تجربتك؟",
+        subtitle: "ملاحظاتك تساعدنا على التحسين",
+        close: "إغلاق",
+        step1Legend: "قيّم تجربتك",
+        ratingLabels: ["سيئة جداً", "سيئة", "مقبولة", "جيدة", "ممتازة"],
+        placeholder: "إجابتك...",
+        charHint: function (n) { return "تحتاج إلى " + n + " حرف إضافي"; },
+        submit: "إرسال الملاحظات",
+        sending: "جارٍ الإرسال…",
+        back: "رجوع",
+        thanks: "شكراً على ملاحظاتك!",
+        footer: "✓ برعاية ماي ناغي",
+        errorTitle: "حدث خطأ ما",
+        errorBody: "تعذّر إرسال ملاحظاتك. يرجى المحاولة مرة أخرى."
+      }
+    };
+
+    /* Emoji set shared across languages (glyph order = rating 1..5). */
+    var EMOJIS = ["😞", "😕", "😐", "🙂", "😊"];
+
+    /* ===============================================================
+       FOLLOW-UP QUESTIONS  —  [userType][lang][ratingIndex 0..4]
+       =============================================================== */
+    var QUESTIONS = {
+      comparers: {
+        en: [
+          "Was the product comparison unclear or incomplete?",
+          "Which product features would help your comparison?",
+          "Did the comparison features help you decide?",
+          "Which product are you leaning toward and why?",
+          "Would you recommend our comparison tool to others?"
+        ],
+        ar: [
+          "هل كانت مقارنة المنتجات غير واضحة أو غير مكتملة؟",
+          "ما الميزات التي قد تساعدك في المقارنة؟",
+          "هل ساعدتك ميزات المقارنة على اتخاذ القرار؟",
+          "أي منتج تميل إليه ولماذا؟",
+          "هل توصي الآخرين بأداة المقارنة لدينا؟"
+        ]
+      },
+      viewers: {
+        en: [
+          "What product information was missing?",
+          "What product details do you need to see?",
+          "Were the product details clear enough for your decision?",
+          "What helped you understand this product?",
+          "Would you purchase this product?"
+        ],
+        ar: [
+          "ما معلومات المنتج التي كانت ناقصة؟",
+          "ما تفاصيل المنتج التي تحتاج إلى رؤيتها؟",
+          "هل كانت تفاصيل المنتج واضحة بما يكفي لقرارك؟",
+          "ما الذي ساعدك على فهم هذا المنتج؟",
+          "هل ستشتري هذا المنتج؟"
+        ]
+      },
+      searchers: {
+        en: [
+          "Was it hard to find what you needed?",
+          "What products were you searching for?",
+          "Did you find what you were looking for?",
+          "What made the search easy?",
+          "Would you search on our site again?"
+        ],
+        ar: [
+          "هل كان من الصعب العثور على ما تحتاجه؟",
+          "ما المنتجات التي كنت تبحث عنها؟",
+          "هل وجدت ما كنت تبحث عنه؟",
+          "ما الذي جعل البحث سهلاً؟",
+          "هل ستبحث في موقعنا مرة أخرى؟"
+        ]
+      },
+      buyers: {
+        en: [
+          "What went wrong during checkout?",
+          "What made the checkout process difficult?",
+          "Was the checkout process clear enough?",
+          "What made checkout smooth for you?",
+          "Would you shop with us again?"
+        ],
+        ar: [
+          "ما الذي حدث بشكل خاطئ أثناء الدفع؟",
+          "ما الذي جعل عملية الدفع صعبة؟",
+          "هل كانت عملية الدفع واضحة بما يكفي؟",
+          "ما الذي جعل عملية الدفع سلسة بالنسبة لك؟",
+          "هل ستتسوق معنا مرة أخرى؟"
+        ]
+      },
+      inquiries: {
+        en: [
+          "What was the issue with your inquiry?",
+          "How could we help you better?",
+          "Is your inquiry being resolved adequately?",
+          "What helped you most?",
+          "Are you satisfied with our response?"
+        ],
+        ar: [
+          "ما المشكلة في استفسارك؟",
+          "كيف يمكننا مساعدتك بشكل أفضل؟",
+          "هل تتم معالجة استفسارك بشكل كافٍ؟",
+          "ما الذي ساعدك أكثر؟",
+          "هل أنت راضٍ عن ردنا؟"
+        ]
+      },
+      "after-sales": {
+        en: [
+          "What's the issue with your order or account?",
+          "What support do you need right now?",
+          "Is your issue being handled well?",
+          "What impressed you about our support?",
+          "Would you order from us again?"
+        ],
+        ar: [
+          "ما المشكلة في طلبك أو حسابك؟",
+          "ما الدعم الذي تحتاجه الآن؟",
+          "هل تتم معالجة مشكلتك بشكل جيد؟",
+          "ما الذي أعجبك في دعمنا؟",
+          "هل ستطلب منا مرة أخرى؟"
+        ]
+      },
+      visitors: {
+        en: [
+          "What could we improve on our website?",
+          "What information was missing?",
+          "What could be better?",
+          "What did you like most about our site?",
+          "Would you recommend us to others?"
+        ],
+        ar: [
+          "ما الذي يمكننا تحسينه في موقعنا؟",
+          "ما المعلومات التي كانت ناقصة؟",
+          "ما الذي يمكن أن يكون أفضل؟",
+          "ما الذي أعجبك أكثر في موقعنا؟",
+          "هل توصي بنا للآخرين؟"
+        ]
+      }
+    };
+
+    /* ===============================================================
+       STATE
+       =============================================================== */
+    var state = {
+      lang: CONFIG.defaultLang,
+      userType: "visitors",
+      rating: null,      // 1..5
+      isOpen: false,
+      lastFocused: null  // element to restore focus to on close
+    };
+
+    var el = {};         // cached DOM references
+    var autoCloseTimer = null;
+
+    /* ===============================================================
+       USER-TYPE DETECTION
+       Detects the customer journey from the current URL. Order matters:
+       more specific journeys are checked before the "visitors" fallback.
+       =============================================================== */
+    function detectUserType() {
+      if (CONFIG.forceUserType) return CONFIG.forceUserType;
+
+      // Include hash so demo links like "#/checkout/" work too.
+      var url = (location.pathname + location.search + location.hash).toLowerCase();
+
+      // 1. Comparers — product comparison flows.
+      if (/\/compare|compare\b/.test(url) && /\/product|\/compare/.test(url)) return "comparers";
+      if (/\/compare(\/|\b)/.test(url)) return "comparers";
+
+      // 2. Buyers — checkout / cart / payment.
+      if (/\/checkout|\/cart|\/payment|\/basket/.test(url)) return "buyers";
+
+      // 3. Searchers — site search.
+      if (/\/search|[?&]q=|[?&]query=/.test(url)) return "searchers";
+
+      // 4. After-sales — orders / account / order history.
+      if (/\/orders|\/order-history|\/account|\/my-account/.test(url)) return "after-sales";
+
+      // 5. Inquiries — support / contact / inquiry forms.
+      if (/\/inquiry|\/inquiries|\/contact|\/support|\/help/.test(url)) return "inquiries";
+
+      // 6. Viewers — product detail pages.
+      if (/\/product(\/|s\/|-)|[?&]view/.test(url)) return "viewers";
+
+      // 7. Visitors — everything else.
+      return "visitors";
+    }
+
+    /* ===============================================================
+       LANGUAGE DETECTION  —  from <html lang> or the browser.
+       =============================================================== */
+    function detectLang() {
+      var htmlLang = (document.documentElement.getAttribute("lang") || "").toLowerCase();
+      if (htmlLang.indexOf("ar") === 0) return "ar";
+      if (htmlLang.indexOf("en") === 0) return "en";
+      var nav = (navigator.language || "").toLowerCase();
+      if (nav.indexOf("ar") === 0) return "ar";
+      return CONFIG.defaultLang === "ar" ? "ar" : "en";
+    }
+
+    /* ===============================================================
+       SMALL HELPERS
+       =============================================================== */
+    function t() { return I18N[state.lang]; }
+
+    // Create an element with attributes + children in one call.
+    function h(tag, attrs, children) {
+      var node = document.createElement(tag);
+      if (attrs) {
+        Object.keys(attrs).forEach(function (k) {
+          if (k === "text") { node.textContent = attrs[k]; }
+          else if (k === "html") { node.innerHTML = attrs[k]; }
+          else { node.setAttribute(k, attrs[k]); }
+        });
+      }
+      (children || []).forEach(function (c) {
+        node.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+      });
+      return node;
+    }
+
+    /* ===============================================================
+       BUILD DOM  (once)
+       =============================================================== */
+    function build() {
+      var root = h("div", { id: "mn-feedback-root" });
+
+      /* Floating action button */
+      el.fab = h("button", {
+        type: "button",
+        class: "mn-fab",
+        "aria-haspopup": "dialog",
+        text: "💬"
+      });
+      el.fab.appendChild(h("span", { class: "mn-sr-only", text: t().fabAria }));
+
+      /* Backdrop + modal */
+      el.backdrop = h("div", { class: "mn-backdrop" });
+      el.modal = h("div", {
+        class: "mn-modal",
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-labelledby": "mn-title"
+      });
+
+      /* ---- Header ---- */
+      el.title = h("h2", { class: "mn-title", id: "mn-title" });
+      el.subtitle = h("p", { class: "mn-subtitle" });
+      el.close = h("button", { type: "button", class: "mn-close", "aria-label": t().close, html: "&times;" });
+
+      el.langEn = h("button", { type: "button", "data-lang": "en", text: "EN" });
+      el.langAr = h("button", { type: "button", "data-lang": "ar", text: "AR" });
+      el.lang = h("div", { class: "mn-lang", role: "group", "aria-label": "Language" }, [el.langEn, el.langAr]);
+
+      var header = h("div", { class: "mn-header" }, [el.close, el.title, el.subtitle, el.lang]);
+
+      /* ---- Body ---- */
+      // Step 1 — emoji rating
+      el.emojiRow = h("div", { class: "mn-emojis", role: "group" });
+      el.emojiButtons = EMOJIS.map(function (glyph, i) {
+        var glyphSpan = h("span", { class: "mn-emoji-glyph", "aria-hidden": "true", text: glyph });
+        var labelSpan = h("span", { class: "mn-emoji-label" });
+        var btn = h("button", {
+          type: "button",
+          class: "mn-emoji",
+          "data-rating": String(i + 1),
+          "aria-pressed": "false"
+        }, [glyphSpan, labelSpan]);
+        btn._label = labelSpan; // stash for i18n updates
+        return btn;
+      });
+      el.emojiButtons.forEach(function (b) { el.emojiRow.appendChild(b); });
+      el.step1 = h("div", { class: "mn-step mn-active" }, [el.emojiRow]);
+
+      // Step 2 — follow-up question
+      el.selectedEmoji = h("div", { class: "mn-selected-emoji", "aria-hidden": "true" });
+      el.question = h("label", { class: "mn-question", for: "mn-textarea" });
+      el.textarea = h("textarea", {
+        class: "mn-textarea",
+        id: "mn-textarea",
+        rows: "4",
+        "aria-describedby": "mn-charhint"
+      });
+      el.charHint = h("div", { class: "mn-charhint", id: "mn-charhint", "aria-live": "polite" });
+      el.submit = h("button", { type: "button", class: "mn-btn mn-btn-primary", disabled: "disabled" });
+      el.back = h("button", { type: "button", class: "mn-btn mn-btn-ghost" });
+      el.step2 = h("div", { class: "mn-step" }, [
+        el.selectedEmoji, el.question, el.textarea, el.charHint, el.submit, el.back
+      ]);
+
+      // Step 3 — thank you
+      el.check = h("div", { class: "mn-check", "aria-hidden": "true", text: "✓" });
+      el.thanksMsg = h("p", { class: "mn-thanks-msg", role: "status" });
+      el.step3 = h("div", { class: "mn-step" }, [h("div", { class: "mn-thanks" }, [el.check, el.thanksMsg])]);
+
+      var body = h("div", { class: "mn-body" }, [el.step1, el.step2, el.step3]);
+
+      /* ---- Footer ---- */
+      el.footer = h("div", { class: "mn-footer" });
+
+      el.modal.appendChild(header);
+      el.modal.appendChild(body);
+      el.modal.appendChild(el.footer);
+      el.backdrop.appendChild(el.modal);
+
+      root.appendChild(el.fab);
+      root.appendChild(el.backdrop);
+      document.body.appendChild(root);
+      el.root = root;
+
+      wireEvents();
+    }
+
+    /* ===============================================================
+       APPLY LANGUAGE  —  refresh every string + direction.
+       =============================================================== */
+    function applyLang() {
+      var s = t();
+      el.root.setAttribute("dir", s.dir);
+      el.root.setAttribute("lang", state.lang);
+
+      el.title.textContent = s.title;
+      el.subtitle.textContent = s.subtitle;
+      el.close.setAttribute("aria-label", s.close);
+      el.emojiRow.setAttribute("aria-label", s.step1Legend);
+      el.textarea.setAttribute("placeholder", s.placeholder);
+      el.back.textContent = s.back;
+      el.thanksMsg.textContent = s.thanks;
+      el.footer.textContent = s.footer;
+
+      el.emojiButtons.forEach(function (b, i) { b._label.textContent = s.ratingLabels[i]; });
+
+      el.langEn.setAttribute("aria-pressed", state.lang === "en" ? "true" : "false");
+      el.langAr.setAttribute("aria-pressed", state.lang === "ar" ? "true" : "false");
+
+      var srOnly = el.fab.querySelector(".mn-sr-only");
+      if (srOnly) srOnly.textContent = s.fabAria;
+
+      // If we're already on step 2, refresh the question + submit label.
+      if (state.rating) refreshStep2();
+      updateSubmitState();
+    }
+
+    /* ===============================================================
+       STEP HELPERS
+       =============================================================== */
+    function showStep(n) {
+      [el.step1, el.step2, el.step3].forEach(function (st, i) {
+        st.classList.toggle("mn-active", i === n - 1);
+      });
+    }
+
+    function refreshStep2() {
+      var set = QUESTIONS[state.userType] || QUESTIONS.visitors;
+      var list = set[state.lang] || set.en;
+      el.question.textContent = list[state.rating - 1];
+      el.selectedEmoji.textContent = EMOJIS[state.rating - 1];
+      el.submit.textContent = t().submit;
+    }
+
+    function updateSubmitState() {
+      var len = el.textarea.value.trim().length;
+      var remaining = CONFIG.minChars - len;
+      if (remaining > 0) {
+        el.submit.setAttribute("disabled", "disabled");
+        el.charHint.textContent = t().charHint(remaining);
+      } else {
+        el.submit.removeAttribute("disabled");
+        el.charHint.textContent = "";
+      }
+    }
+
+    function selectRating(rating) {
+      state.rating = rating;
+      el.emojiButtons.forEach(function (b) {
+        b.setAttribute("aria-pressed", b.getAttribute("data-rating") === String(rating) ? "true" : "false");
+      });
+      refreshStep2();
+      showStep(2);
+      updateSubmitState();
+      // Move focus into the textarea for a smooth keyboard flow.
+      window.setTimeout(function () { el.textarea.focus(); }, 50);
+    }
+
+    /* ===============================================================
+       SUBMISSION  —  POST to Google Forms (no-cors) or demo-log.
+       =============================================================== */
+    function submit() {
+      var answer = el.textarea.value.trim();
+      if (answer.length < CONFIG.minChars || !state.rating) return;
+
+      var payload = {
+        language: state.lang,
+        userType: state.userType,
+        rating: String(state.rating),
+        feedback: answer,
+        timestamp: new Date().toISOString(),
+        pageUrl: location.href
+      };
+
+      el.submit.setAttribute("disabled", "disabled");
+      el.submit.textContent = t().sending;
+
+      sendToGoogleForms(payload)
+        .then(function () { finishSuccess(); })
+        .catch(function (err) {
+          // Fail gracefully: log, but never break the host page UX.
+          console.error("[MY NAGHI feedback] submission failed:", err);
+          finishSuccess(); // no-cors gives us no real status; treat as sent
+        });
+    }
+
+    function sendToGoogleForms(payload) {
+      return new Promise(function (resolve, reject) {
+        // Demo mode: no form configured → just log and resolve.
+        if (!CONFIG.form.formId) {
+          console.info("[MY NAGHI feedback] demo mode, payload:", payload);
+          resolve();
+          return;
+        }
+        try {
+          var url =
+            "https://docs.google.com/forms/d/e/" +
+            encodeURIComponent(CONFIG.form.formId) +
+            "/formResponse";
+
+          var fd = new FormData();
+          var entries = CONFIG.form.entries;
+          Object.keys(entries).forEach(function (key) {
+            if (payload[key] != null && entries[key]) fd.append(entries[key], payload[key]);
+          });
+
+          // no-cors: the response is opaque, but the write succeeds.
+          fetch(url, { method: "POST", mode: "no-cors", body: fd })
+            .then(function () { resolve(); })
+            .catch(reject);
+        } catch (e) {
+          reject(e);
+        }
+      });
+    }
+
+    function finishSuccess() {
+      showStep(3);
+      // Analytics hook — fire a custom event integrators can listen for.
+      dispatch("mn-feedback:submitted", { userType: state.userType, rating: state.rating, lang: state.lang });
+      clearTimeout(autoCloseTimer);
+      autoCloseTimer = window.setTimeout(closeModal, CONFIG.autoCloseMs);
+    }
+
+    function dispatch(name, detail) {
+      try {
+        document.dispatchEvent(new CustomEvent(name, { detail: detail }));
+      } catch (e) { /* older browsers — ignore */ }
+    }
+
+    /* ===============================================================
+       OPEN / CLOSE / RESET
+       =============================================================== */
+    function openModal() {
+      state.lastFocused = document.activeElement;
+      state.userType = detectUserType();
+      resetFlow();
+      state.isOpen = true;
+      el.root.classList.add("mn-open");
+      dispatch("mn-feedback:opened", { userType: state.userType, lang: state.lang });
+      // Focus the close button first (predictable, non-destructive target).
+      window.setTimeout(function () { el.close.focus(); }, 60);
+    }
+
+    function closeModal() {
+      clearTimeout(autoCloseTimer);
+      state.isOpen = false;
+      el.root.classList.remove("mn-open");
+      if (state.lastFocused && state.lastFocused.focus) state.lastFocused.focus();
+    }
+
+    function resetFlow() {
+      state.rating = null;
+      el.textarea.value = "";
+      el.charHint.textContent = "";
+      el.emojiButtons.forEach(function (b) { b.setAttribute("aria-pressed", "false"); });
+      el.submit.textContent = t().submit;
+      el.submit.setAttribute("disabled", "disabled");
+      showStep(1);
+    }
+
+    /* ===============================================================
+       FOCUS TRAP  —  keep Tab inside the modal while it is open.
+       =============================================================== */
+    function trapFocus(e) {
+      if (!state.isOpen || e.key !== "Tab") return;
+      var focusables = el.modal.querySelectorAll(
+        'button, [href], textarea, input, select, [tabindex]:not([tabindex="-1"])'
+      );
+      var visible = Array.prototype.filter.call(focusables, function (n) {
+        return n.offsetParent !== null && !n.disabled;
+      });
+      if (!visible.length) return;
+      var first = visible[0];
+      var last = visible[visible.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault(); last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault(); first.focus();
+      }
+    }
+
+    /* ===============================================================
+       EVENT WIRING
+       =============================================================== */
+    function wireEvents() {
+      el.fab.addEventListener("click", openModal);
+      el.close.addEventListener("click", closeModal);
+
+      // Backdrop click (but not clicks inside the modal) closes it.
+      el.backdrop.addEventListener("click", function (e) {
+        if (e.target === el.backdrop) closeModal();
+      });
+
+      // Emoji selection
+      el.emojiButtons.forEach(function (b) {
+        b.addEventListener("click", function () {
+          selectRating(parseInt(b.getAttribute("data-rating"), 10));
+        });
+      });
+
+      // Language toggle
+      el.langEn.addEventListener("click", function () { setLanguage("en"); });
+      el.langAr.addEventListener("click", function () { setLanguage("ar"); });
+
+      // Textarea → live validation
+      el.textarea.addEventListener("input", updateSubmitState);
+
+      // Buttons
+      el.submit.addEventListener("click", submit);
+      el.back.addEventListener("click", function () { showStep(1); });
+
+      // Keyboard: Esc closes, Tab is trapped.
+      document.addEventListener("keydown", function (e) {
+        if (!state.isOpen) return;
+        if (e.key === "Escape") { closeModal(); return; }
+        trapFocus(e);
+      });
+    }
+
+    function setLanguage(lang) {
+      if (lang !== "en" && lang !== "ar") return;
+      state.lang = lang;
+      applyLang();
+    }
+
+    /* ===============================================================
+       PUBLIC API  —  window.MYNAGHI_FEEDBACK
+       =============================================================== */
+    var api = {
+      open: openModal,
+      close: closeModal,
+      setLanguage: setLanguage,
+      // Manually pin a user type (QA / testing). Pass null to auto-detect.
+      setUserType: function (type) {
+        CONFIG.forceUserType = type || null;
+        if (state.isOpen) { state.userType = detectUserType(); if (state.rating) refreshStep2(); }
+      },
+      // Merge runtime config, e.g. inject a real Google Form at load time.
+      configure: function (partial) {
+        if (!partial) return;
+        Object.keys(partial).forEach(function (k) {
+          if (k === "form" && partial.form) {
+            if (partial.form.formId != null) CONFIG.form.formId = partial.form.formId;
+            if (partial.form.entries) {
+              Object.keys(partial.form.entries).forEach(function (ek) {
+                CONFIG.form.entries[ek] = partial.form.entries[ek];
+              });
+            }
+          } else { CONFIG[k] = partial[k]; }
+        });
+      },
+      getState: function () { return { lang: state.lang, userType: state.userType, rating: state.rating, isOpen: state.isOpen }; },
+      config: CONFIG,
+      i18n: I18N,
+      questions: QUESTIONS,
+      detectUserType: detectUserType
+    };
+    window.MYNAGHI_FEEDBACK = api;
+
+    /* ===============================================================
+       INIT
+       =============================================================== */
+    function init() {
+      state.lang = detectLang();
+      state.userType = detectUserType();
+      build();
+      applyLang();
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", init);
+    } else {
+      init();
+    }
+  })();
+  </script>
+</body>
+</html>
