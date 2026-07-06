@@ -1,20 +1,21 @@
 <!--
   =====================================================================
-  MY NAGHI — Customer Feedback Widget  (Star Rating Edition)
+  MY NAGHI — Customer Feedback Widget  (3-Step Edition)
   ---------------------------------------------------------------------
   Self-contained, dependency-free feedback popup for mynaghi.sa.
 
-  Flow:  5-star rating  →  context-aware follow-up question  →  thanks.
-  Bilingual (Arabic default / English), full RTL, auto user-type
-  detection from the URL, submits to Google Forms.
+  Flow:  reason for visit → 5-star rating → optional note → thanks.
+  Bilingual (Arabic default / English), full RTL, submits to
+  Google Forms.
 
   HOW TO USE
-    - Standalone test:  open this file directly in a browser.
-    - Production embed: see INTEGRATION_GUIDE.md.
+    - Preview:  open this file directly in a browser.
+    - Publish:  see INTEGRATION_GUIDE.md (step-by-step, no coding).
 
-  EVERYTHING CONFIGURABLE LIVES AT THE TOP OF THE <script> BLOCK:
-    FEEDBACK_CONFIG · FORCE_USER_TYPE · AUTO_OPEN_AFTER_MS ·
-    AUTO_OPEN_ON_SCROLL_PERCENT · STRINGS · QUESTIONS
+  EVERYTHING EDITABLE LIVES IN LABELLED BLOCKS AT THE TOP OF THE
+  <script> SECTION:
+    FEEDBACK_CONFIG · SHOW_REASON_PILL · AUTO_OPEN_AFTER_MS ·
+    AUTO_OPEN_ON_SCROLL_PERCENT · REASONS · QUESTIONS · STRINGS
   Colors are CSS variables at the top of the <style> block.
 
   No build step. No frameworks. Vanilla HTML/CSS/JS only.
@@ -43,24 +44,25 @@
 
 <style>
   /* ==============================================================
-     DESIGN TOKENS — change these to re-theme the whole widget
+     COLORS & DESIGN TOKENS
+     HOW TO EDIT THIS: change a hex value below and the whole
+     widget re-themes. Nothing else needs to be touched.
      ============================================================== */
   #mn-feedback-root {
-    --mn-lilac:        #964BFA;   /* primary — CTAs, active states  */
-    --mn-lilac-dark:   #6F2DD4;   /* hover on primary buttons       */
-    --mn-lilac-subtle: #F2EAFF;   /* hover bg on option buttons     */
+    --mn-lilac:        #964BFA;   /* primary — active states, CTAs  */
+    --mn-lilac-dark:   #6F2DD4;   /* primary button hover           */
+    --mn-lilac-subtle: #F2EAFF;   /* option hover bg, thanks circle */
     --mn-black:        #1A1A1A;   /* primary text                   */
     --mn-bluegrey:     #6B7D99;   /* secondary text                 */
-    --mn-bluegrey-lt:  #A8B4C8;   /* muted hints / captions         */
-    --mn-sand:         #EDE5D0;   /* header accent                  */
+    --mn-bluegrey-lt:  #A8B4C8;   /* hints / placeholders           */
+    --mn-sand:         #EDE5D0;   /* icon tiles                     */
     --mn-sand-lt:      #F6F1E6;   /* header background              */
-    --mn-grey-100:     #F5F5F5;   /* footer background              */
-    --mn-grey-200:     #E8E8E8;   /* borders, unfilled stars        */
-    --mn-gold:         #F5B301;   /* filled stars ONLY              */
+    --mn-grey-100:     #F5F5F5;   /* footer, pills                  */
+    --mn-grey-200:     #E8E8E8;   /* borders, empty stars           */
+    --mn-gold:         #F5B301;   /* filled stars only              */
     --mn-white:        #FFFFFF;
-    --mn-error:        #C6432E;   /* inline validation message      */
 
-    --mn-radius:       12px;      /* option buttons, inputs         */
+    --mn-radius:       12px;      /* buttons / inputs               */
     --mn-radius-card:  16px;      /* modal card                     */
     --mn-radius-pill:  9999px;    /* pills                          */
 
@@ -131,8 +133,8 @@
     transform: translateY(-2px);
     box-shadow: 0 8px 32px rgba(150, 75, 250, 0.32);
   }
-  #mn-feedback-root .mn-fab:active { transform: scale(0.97); }
-  #mn-feedback-root .mn-fab svg { width: 28px; height: 28px; fill: currentColor; }
+  #mn-feedback-root .mn-fab:active { transform: scale(0.98); }
+  #mn-feedback-root .mn-fab svg { width: 28px; height: 28px; }
   #mn-feedback-root .mn-fab[hidden] { display: none; }
 
   /* ---------------- Overlay + modal card ---------------- */
@@ -176,7 +178,7 @@
   #mn-feedback-root .mn-header {
     position: relative;
     background: var(--mn-sand-lt);
-    padding: 22px 24px 18px;
+    padding: 22px 24px 16px;
   }
   #mn-feedback-root .mn-brand {
     font-size: 12px;
@@ -191,12 +193,14 @@
     font-weight: 600;
     letter-spacing: -0.02em;
     color: var(--mn-black);
+    padding-inline-end: 40px;   /* keep clear of the close button */
   }
   #mn-feedback-root .mn-subtitle {
     font-size: 15px;
     font-weight: 400;
     color: var(--mn-bluegrey);
     margin-top: 4px;
+    min-height: 21px;           /* reserved: steps without a subtitle don't jump */
   }
 
   /* Close button — flips to the top-LEFT in RTL via inset-inline-end */
@@ -214,15 +218,18 @@
     transition: background 150ms var(--mn-ease), color 150ms var(--mn-ease);
   }
   #mn-feedback-root .mn-close:hover { background: var(--mn-sand); color: var(--mn-black); }
-  #mn-feedback-root .mn-close:active { transform: scale(0.97); }
-  #mn-feedback-root .mn-close svg { width: 18px; height: 18px; stroke: currentColor; }
+  #mn-feedback-root .mn-close:active { transform: scale(0.98); }
+  #mn-feedback-root .mn-close svg { width: 18px; height: 18px; }
 
-  /* Language pills */
-  #mn-feedback-root .mn-langs {
+  /* Language pills + step dots share one row */
+  #mn-feedback-root .mn-header-row {
     display: flex;
-    gap: 8px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     margin-top: 14px;
   }
+  #mn-feedback-root .mn-langs { display: flex; gap: 8px; }
   #mn-feedback-root .mn-lang {
     min-height: 44px;
     padding: 0 20px;
@@ -235,34 +242,103 @@
                 transform 150ms var(--mn-ease);
   }
   #mn-feedback-root .mn-lang:hover { background: #DEDEDE; }
-  #mn-feedback-root .mn-lang:active { transform: scale(0.97); }
+  #mn-feedback-root .mn-lang:active { transform: scale(0.98); }
   #mn-feedback-root .mn-lang.mn-active {
     background: var(--mn-lilac);
     color: var(--mn-white);
   }
   #mn-feedback-root .mn-lang.mn-active:hover { background: var(--mn-lilac-dark); }
 
+  /* 3-dot progress indicator (1 = reason, 2 = stars, 3 = note) */
+  #mn-feedback-root .mn-dots { display: flex; gap: 6px; align-items: center; }
+  #mn-feedback-root .mn-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: var(--mn-radius-pill);
+    background: var(--mn-grey-200);
+    transition: background 200ms var(--mn-ease), width 200ms var(--mn-ease);
+  }
+  #mn-feedback-root .mn-dot.mn-done { background: var(--mn-lilac-subtle); }
+  #mn-feedback-root .mn-dot.mn-now { background: var(--mn-lilac); width: 20px; }
+
   /* ---------------- Body / steps ---------------- */
-  #mn-feedback-root .mn-body { padding: 24px 20px; }
+  #mn-feedback-root .mn-body { padding: 20px; }
   #mn-feedback-root .mn-step[hidden] { display: none; }
 
-  #mn-feedback-root .mn-question {
-    font-size: 17px;
+  /* --- Step 1: reason tiles (built from the REASONS array) --- */
+  #mn-feedback-root .mn-reasons { display: flex; flex-direction: column; gap: 10px; }
+  #mn-feedback-root .mn-reason {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    min-height: 56px;
+    padding: 10px 14px;
+    text-align: start;
+    background: var(--mn-white);
+    border: 1.5px solid var(--mn-grey-200);
+    border-radius: var(--mn-radius);
+    transition: border-color 150ms var(--mn-ease), background 150ms var(--mn-ease),
+                transform 150ms var(--mn-ease);
+  }
+  #mn-feedback-root .mn-reason:hover,
+  #mn-feedback-root .mn-reason:focus-visible {
+    border-color: var(--mn-lilac);
+    background: var(--mn-lilac-subtle);
+    transform: translateY(-1px);
+  }
+  #mn-feedback-root .mn-reason:active { transform: scale(0.98); }
+  #mn-feedback-root .mn-reason-icon {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--mn-radius);
+    background: var(--mn-sand);
+    color: var(--mn-lilac);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #mn-feedback-root .mn-reason-icon svg { width: 22px; height: 22px; }
+  #mn-feedback-root .mn-reason-main {
+    display: block;
+    font-size: 16px;
     font-weight: 500;
-    line-height: 1.4;
     color: var(--mn-black);
-    text-align: center;
+  }
+  #mn-feedback-root .mn-reason-sub {
+    display: block;
+    font-size: 13px;
+    color: var(--mn-bluegrey-lt);
+    margin-top: 1px;
   }
 
-  /* --- Step 1: stars ---
-     The row is forced LTR in BOTH languages: star fill always grows
+  /* --- Step 2: stars --- */
+  #mn-feedback-root .mn-pill {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: fit-content;
+    margin: 0 auto 16px;
+    padding: 8px 16px;
+    border-radius: var(--mn-radius-pill);
+    background: var(--mn-grey-100);
+    color: var(--mn-bluegrey);
+    font-size: 14px;
+    font-weight: 500;
+  }
+  #mn-feedback-root .mn-pill svg { width: 16px; height: 16px; color: var(--mn-lilac); flex-shrink: 0; }
+  #mn-feedback-root .mn-pill[hidden] { display: none; }
+
+  /* The row is forced LTR in BOTH languages: star fill always grows
      left→right, the standard convention in Saudi apps. */
   #mn-feedback-root .mn-stars {
     direction: ltr;
     display: flex;
     justify-content: center;
     gap: clamp(0px, 1.5vw, 8px);
-    margin-top: 18px;
+    margin-top: 4px;
   }
   #mn-feedback-root .mn-star {
     width: 56px;               /* ≥56px touch target for 40+ users */
@@ -272,7 +348,7 @@
     align-items: center;
     justify-content: center;
     border-radius: var(--mn-radius);
-    color: var(--mn-grey-200); /* unfilled */
+    color: var(--mn-grey-200); /* empty */
     transition: transform 180ms var(--mn-ease), color 180ms var(--mn-ease);
   }
   #mn-feedback-root .mn-star svg { width: 38px; height: 38px; fill: currentColor; }
@@ -281,8 +357,18 @@
   #mn-feedback-root .mn-star:focus-visible,
   #mn-feedback-root .mn-star:active { transform: scale(1.15); }
 
+  /* On very narrow phones the star row borrows the body's side
+     padding so all five 56px touch targets still fit (5×56 = 280px). */
+  @media (max-width: 379px) {
+    #mn-feedback-root .mn-stars {
+      gap: 0;
+      margin-left: -20px;
+      margin-right: -20px;
+    }
+  }
+
   #mn-feedback-root .mn-caption {
-    min-height: 24px;          /* reserved so appearing text never shifts layout */
+    min-height: 24px;          /* reserved: appearing text never shifts layout */
     margin-top: 14px;
     font-size: 16px;
     font-weight: 600;
@@ -296,27 +382,47 @@
     color: var(--mn-bluegrey-lt);
   }
 
-  /* --- Step 2: follow-up question + text --- */
+  /* --- Step 3: optional note --- */
   #mn-feedback-root .mn-mini {
     direction: ltr;
     display: flex;
     justify-content: center;
     gap: 2px;
+    margin-bottom: 14px;
     color: var(--mn-grey-200);
   }
   #mn-feedback-root .mn-mini svg { width: 28px; height: 28px; fill: currentColor; }
   #mn-feedback-root .mn-mini svg.mn-on { color: var(--mn-gold); }
-  #mn-feedback-root .mn-mini-caption {
-    margin-top: 4px;
-    margin-bottom: 16px;
-    font-size: 13px;
+
+  #mn-feedback-root .mn-q-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px 10px;
     text-align: center;
-    color: var(--mn-bluegrey-lt);
+  }
+  #mn-feedback-root .mn-question {
+    font-size: 17px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--mn-black);
+    text-align: center;
+  }
+  #mn-feedback-root .mn-optional {
+    flex-shrink: 0;
+    padding: 3px 12px;
+    border-radius: var(--mn-radius-pill);
+    background: var(--mn-grey-100);
+    color: var(--mn-bluegrey);
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
   }
 
   #mn-feedback-root .mn-textarea {
     width: 100%;
-    min-height: 110px;
+    min-height: 100px;
     margin-top: 14px;
     padding: 14px;
     font-family: inherit;
@@ -335,14 +441,6 @@
     border-color: var(--mn-lilac);
   }
 
-  #mn-feedback-root .mn-error {
-    margin-top: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--mn-error);
-  }
-  #mn-feedback-root .mn-error[hidden] { display: none; }
-
   #mn-feedback-root .mn-submit {
     width: 100%;
     min-height: 52px;
@@ -357,8 +455,15 @@
                 opacity 150ms var(--mn-ease);
   }
   #mn-feedback-root .mn-submit:hover:not(:disabled) { background: var(--mn-lilac-dark); }
-  #mn-feedback-root .mn-submit:active:not(:disabled) { transform: scale(0.97); }
+  #mn-feedback-root .mn-submit:active:not(:disabled) { transform: scale(0.98); }
   #mn-feedback-root .mn-submit:disabled { opacity: 0.7; cursor: default; }
+
+  #mn-feedback-root .mn-helper {
+    margin-top: 8px;
+    font-size: 13px;
+    text-align: center;
+    color: var(--mn-bluegrey-lt);
+  }
 
   #mn-feedback-root .mn-back {
     width: 100%;
@@ -373,22 +478,22 @@
     transition: background 150ms var(--mn-ease), transform 150ms var(--mn-ease);
   }
   #mn-feedback-root .mn-back:hover { background: var(--mn-lilac-subtle); }
-  #mn-feedback-root .mn-back:active { transform: scale(0.97); }
+  #mn-feedback-root .mn-back:active { transform: scale(0.98); }
 
-  /* --- Step 3: thank you --- */
-  #mn-feedback-root .mn-step-3 { text-align: center; padding: 24px 0 16px; }
+  /* --- Step 4: thank you --- */
+  #mn-feedback-root .mn-step-4 { text-align: center; padding: 24px 0 16px; }
   #mn-feedback-root .mn-check {
     width: 72px;
     height: 72px;
     margin: 0 auto 16px;
     border-radius: 50%;
-    background: var(--mn-lilac);
-    color: var(--mn-white);
+    background: var(--mn-lilac-subtle);
+    color: var(--mn-lilac);
     display: flex;
     align-items: center;
     justify-content: center;
   }
-  #mn-feedback-root .mn-check svg { width: 48px; height: 48px; stroke: currentColor; }
+  #mn-feedback-root .mn-check svg { width: 40px; height: 40px; }
   #mn-feedback-root .mn-thanks {
     font-size: 18px;
     font-weight: 600;
@@ -404,16 +509,6 @@
     color: var(--mn-bluegrey-lt);
   }
 
-  /* On very narrow phones the star row borrows the body's side
-     padding so all five 56px touch targets still fit (5×56 = 280px). */
-  @media (max-width: 379px) {
-    #mn-feedback-root .mn-stars {
-      gap: 0;
-      margin-left: -20px;
-      margin-right: -20px;
-    }
-  }
-
   /* ---------------- Reduced motion ---------------- */
   @media (prefers-reduced-motion: reduce) {
     #mn-feedback-root *,
@@ -427,10 +522,11 @@
 
 <div id="mn-feedback-root" data-dir="rtl">
 
-  <!-- Floating trigger -->
+  <!-- Floating trigger (star line icon) -->
   <button class="mn-fab" type="button" aria-haspopup="dialog">
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.26L7 14.14 2 9.27l6.91-1.01z"/>
     </svg>
   </button>
 
@@ -440,25 +536,35 @@
 
       <header class="mn-header">
         <button class="mn-close" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round"
-               aria-hidden="true" focusable="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+               stroke-linecap="round" aria-hidden="true" focusable="false">
             <path d="M6 6l12 12M18 6L6 18"/>
           </svg>
         </button>
         <div class="mn-brand">MY NAGHI</div>
         <h2 class="mn-title" id="mn-title"></h2>
         <p class="mn-subtitle"></p>
-        <div class="mn-langs">
-          <button class="mn-lang" type="button" data-lang="ar" lang="ar">العربية</button>
-          <button class="mn-lang" type="button" data-lang="en" lang="en">EN</button>
+        <div class="mn-header-row">
+          <div class="mn-langs">
+            <button class="mn-lang" type="button" data-lang="ar" lang="ar">العربية</button>
+            <button class="mn-lang" type="button" data-lang="en" lang="en">EN</button>
+          </div>
+          <div class="mn-dots" role="img">
+            <span class="mn-dot"></span><span class="mn-dot"></span><span class="mn-dot"></span>
+          </div>
         </div>
       </header>
 
       <div class="mn-body">
 
-        <!-- STEP 1 — star rating -->
+        <!-- STEP 1 — reason for visit (tiles are built from REASONS) -->
         <section class="mn-step mn-step-1">
-          <p class="mn-question mn-q1"></p>
+          <div class="mn-reasons"></div>
+        </section>
+
+        <!-- STEP 2 — star rating -->
+        <section class="mn-step mn-step-2" hidden>
+          <div class="mn-pill"></div>
           <div class="mn-stars" role="radiogroup">
             <button class="mn-star" type="button" role="radio" aria-checked="false" data-value="1">
               <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
@@ -480,24 +586,25 @@
           <p class="mn-hint">اضغط على النجوم للتقييم · Tap the stars to rate</p>
         </section>
 
-        <!-- STEP 2 — follow-up question + answer -->
-        <section class="mn-step mn-step-2" hidden>
+        <!-- STEP 3 — optional written note -->
+        <section class="mn-step mn-step-3" hidden>
           <div class="mn-mini" aria-hidden="true"></div>
-          <p class="mn-mini-caption"></p>
-          <p class="mn-question mn-q2" id="mn-q2"></p>
-          <textarea class="mn-textarea" rows="4" aria-labelledby="mn-q2"
-                    aria-describedby="mn-error"></textarea>
-          <p class="mn-error" id="mn-error" role="alert" hidden></p>
-          <button class="mn-submit" type="button"></button>
-          <button class="mn-back" type="button"></button>
+          <div class="mn-q-row">
+            <p class="mn-question mn-q3" id="mn-q3"></p>
+            <span class="mn-optional">اختياري · Optional</span>
+          </div>
+          <textarea class="mn-textarea" rows="4" aria-labelledby="mn-q3"></textarea>
+          <button class="mn-submit" type="button">إرسال · Send</button>
+          <p class="mn-helper"></p>
+          <button class="mn-back" type="button">تغيير التقييم · Change rating</button>
         </section>
 
-        <!-- STEP 3 — thank you -->
-        <section class="mn-step mn-step-3" hidden>
+        <!-- STEP 4 — thank you -->
+        <section class="mn-step mn-step-4" hidden>
           <div class="mn-check">
-            <svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round"
-                 stroke-linejoin="round" aria-hidden="true" focusable="false">
-              <path d="M4.5 12.5l5 5L19.5 7"/>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <path d="M20 6 9 17l-5-5"/>
             </svg>
           </div>
           <p class="mn-thanks" role="status"></p>
@@ -515,74 +622,206 @@
   'use strict';
 
   /* ================================================================
-     ⚙️  CONFIG — everything the site team may need to change
+     ⚙️  GOOGLE FORM CONFIG
+     HOW TO EDIT THIS: paste your Form ID and the five entry IDs
+     from your Google Form here — see INTEGRATION_GUIDE.md part C.
      ================================================================ */
-
-  // Google Forms destination. Replace formId and every entry.XXXXXXXXX
-  // with your own values — see INTEGRATION_GUIDE.md, section 1.
   const FEEDBACK_CONFIG = {
     formId: 'YOUR_FORM_ID',
     fields: {
       language: 'entry.XXXXXXXXX',
-      userType: 'entry.XXXXXXXXX',
+      reason:   'entry.XXXXXXXXX',
       rating:   'entry.XXXXXXXXX',
       answer:   'entry.XXXXXXXXX',
       pageUrl:  'entry.XXXXXXXXX'
     }
   };
 
-  // Force a user type for testing, e.g. 'buyers'. null = auto-detect.
-  // Valid: 'visitors' | 'searchers' | 'viewers' | 'comparers' |
-  //        'buyers' | 'inquiries' | 'after-sales'
-  const FORCE_USER_TYPE = null;
-
-  // Auto-open triggers. Both default to null = the widget opens ONLY
-  // via the floating button (recommended for this audience).
-  const AUTO_OPEN_AFTER_MS = null;          // e.g. 30000 = open after 30s
-  const AUTO_OPEN_ON_SCROLL_PERCENT = null; // e.g. 60 = open at 60% scroll
+  /* ================================================================
+     🚦  BEHAVIOR FLAGS
+     HOW TO EDIT THIS: SHOW_REASON_PILL shows the chosen reason as a
+     small pill on the rating step (true/false). The AUTO_OPEN options
+     stay null so the widget opens only via the floating button;
+     e.g. 30000 opens it after 30 seconds, 60 opens at 60% scroll.
+     ================================================================ */
+  const SHOW_REASON_PILL = true;
+  const AUTO_OPEN_AFTER_MS = null;
+  const AUTO_OPEN_ON_SCROLL_PERCENT = null;
 
   /* ================================================================
-     🌍  ALL user-facing strings (nothing is hardcoded in the logic)
+     📋  REASONS (step 1 tiles, shown in this order)
+     HOW TO EDIT THIS: move a line to reorder, delete a line to remove
+     a reason, or copy a line to add one (new id + labels + icon name
+     from ICONS below, plus a matching QUESTIONS block for the new id).
+     ================================================================ */
+  const REASONS = [
+    { id: 'buy',      ar: 'أرغب في شراء سيارة',       en: 'Looking to buy a car',  icon: 'car' },
+    { id: 'browse',   ar: 'أتصفّح فقط',               en: 'Just browsing',         icon: 'eye' },
+    { id: 'service',  ar: 'موعد صيانة',               en: 'Service appointment',   icon: 'wrench' },
+    { id: 'location', ar: 'البحث عن معرض أو فرع',     en: 'Showroom / location',   icon: 'map-pin' },
+    { id: 'pricing',  ar: 'الأسعار والتمويل',         en: 'Pricing & financing',   icon: 'tag' },
+    { id: 'other',    ar: 'سبب آخر',                  en: 'Something else',        icon: 'message-square' }
+  ];
+
+  /* ================================================================
+     ❓  FOLLOW-UP QUESTIONS — one per reason × star (1–5) × language
+     HOW TO EDIT THIS: find the reason id, then the language, then the
+     star number, and change the text. If a reason has no questions
+     the widget falls back to a generic question — it never breaks.
+     ================================================================ */
+  const QUESTIONS = {
+    'buy': {
+      en: {
+        1: "We're sorry — did you find the car you wanted? What was missing?",
+        2: 'What made your car search difficult today?',
+        3: 'Did you find a car that fits your needs? What would help?',
+        4: "You seem close — what would make buying easier?",
+        5: 'Great! Did you find the car you wanted? What stood out?'
+      },
+      ar: {
+        1: 'نعتذر — هل وجدت السيارة التي تبحث عنها؟ وما الذي كان ناقصاً؟',
+        2: 'ما الذي جعل بحثك عن السيارة صعباً اليوم؟',
+        3: 'هل وجدت سيارة تناسب احتياجك؟ وما الذي قد يساعدك أكثر؟',
+        4: 'يبدو أنك قريب من القرار — ما الذي يجعل الشراء أسهل؟',
+        5: 'رائع! هل وجدت السيارة التي أردتها؟ وما الذي أعجبك؟'
+      }
+    },
+    'browse': {
+      en: {
+        1: 'What made browsing frustrating?',
+        2: 'What could make exploring our cars more enjoyable?',
+        3: 'Was there anything you wished you could see?',
+        4: 'What did you enjoy exploring?',
+        5: 'Glad you enjoyed it! What did you love most?'
+      },
+      ar: {
+        1: 'ما الذي جعل التصفّح غير مريح؟',
+        2: 'ما الذي قد يجعل استكشاف سياراتنا أكثر متعة؟',
+        3: 'هل كان هناك شيء تمنّيت لو رأيته؟',
+        4: 'ما الذي استمتعت باستكشافه؟',
+        5: 'يسعدنا ذلك! ما الذي أعجبك أكثر؟'
+      }
+    },
+    'service': {
+      en: {
+        1: 'What went wrong with booking your service?',
+        2: 'What made scheduling difficult?',
+        3: 'Was booking your service appointment clear?',
+        4: 'What went smoothly with your booking?',
+        5: 'Excellent! What made booking easy?'
+      },
+      ar: {
+        1: 'ما الذي حدث بشكل خاطئ في حجز موعد الصيانة؟',
+        2: 'ما الذي جعل تحديد الموعد صعباً؟',
+        3: 'هل كان حجز موعد الصيانة واضحاً؟',
+        4: 'ما الذي تمّ بسلاسة في حجزك؟',
+        5: 'ممتاز! ما الذي جعل الحجز سهلاً؟'
+      }
+    },
+    'location': {
+      en: {
+        1: 'Were you unable to find a showroom near you?',
+        2: 'What made finding a location difficult?',
+        3: 'Did you find the showroom you needed?',
+        4: 'Was the location information helpful?',
+        5: 'Great! Was it easy to find our showroom?'
+      },
+      ar: {
+        1: 'هل لم تتمكّن من إيجاد معرض قريب منك؟',
+        2: 'ما الذي جعل إيجاد الفرع صعباً؟',
+        3: 'هل وجدت المعرض الذي تحتاجه؟',
+        4: 'هل كانت معلومات الفرع مفيدة؟',
+        5: 'رائع! هل كان من السهل إيجاد معرضنا؟'
+      }
+    },
+    'pricing': {
+      en: {
+        1: 'What pricing or financing information was missing?',
+        2: 'What made understanding pricing difficult?',
+        3: 'Was the pricing & financing information clear enough?',
+        4: 'What helped you understand our offers?',
+        5: 'Great! Was the pricing and financing clear?'
+      },
+      ar: {
+        1: 'ما معلومات الأسعار أو التمويل التي كانت ناقصة؟',
+        2: 'ما الذي جعل فهم الأسعار صعباً؟',
+        3: 'هل كانت معلومات الأسعار والتمويل واضحة بما يكفي؟',
+        4: 'ما الذي ساعدك على فهم عروضنا؟',
+        5: 'رائع! هل كانت الأسعار والتمويل واضحة؟'
+      }
+    },
+    'other': {
+      en: {
+        1: "We're sorry to hear that — what went wrong?",
+        2: 'What could we have done better?',
+        3: 'What would have improved your visit?',
+        4: 'What went well during your visit?',
+        5: 'Wonderful! What did we do right?'
+      },
+      ar: {
+        1: 'نأسف لسماع ذلك — ما الذي حدث بشكل خاطئ؟',
+        2: 'ما الذي كان بإمكاننا تحسينه؟',
+        3: 'ما الذي كان سيجعل زيارتك أفضل؟',
+        4: 'ما الذي سار بشكل جيد خلال زيارتك؟',
+        5: 'رائع! ما الذي قمنا به بشكل صحيح؟'
+      }
+    }
+  };
+
+  /* ================================================================
+     🌍  UI STRINGS (everything the customer reads, both languages)
+     HOW TO EDIT THIS: change any text on the right of a colon.
+     Keys ending in the same name must exist in BOTH ar and en.
      ================================================================ */
   const STRINGS = {
     ar: {
       dir: 'rtl',
-      title: 'شاركنا رأيك',
-      subtitle: 'رأيك يساعدنا على تحسين تجربتك',
-      q1: 'كيف كانت تجربتك معنا؟',
+      step1Title: 'ما سبب زيارتك اليوم؟',
+      step1Sub: 'اختر السبب الأقرب لزيارتك',
+      step2Title: 'كيف كانت تجربتك؟',
+      step2Sub: 'هل لبّينا سبب زيارتك؟',
+      step3Title: 'أخبرنا المزيد',
+      step3Sub: 'ملاحظتك تساعدنا على التحسّن',
+      thanksTitle: 'تم الإرسال',
+      thanksSub: '',
       starsGroup: 'قيّم تجربتك من نجمة واحدة إلى خمس نجوم',
       star: 'من 5',
-      placeholder: 'اكتب إجابتك هنا...',
-      submit: 'إرسال',
+      placeholder: 'اكتب إجابتك هنا... (اختياري)',
+      helper: 'يمكنك الإرسال دون كتابة أي شيء',
       sending: 'جاري الإرسال...',
-      back: 'رجوع',
       thanks: 'شكراً على ملاحظاتك!',
-      emptyError: 'من فضلك اكتب إجابتك',
+      fallbackQuestion: 'ما الذي تودّ إخبارنا به؟',
       close: 'إغلاق',
       fab: 'شاركنا رأيك',
+      stepLabel: 'الخطوة {n} من 3',
       footer: 'ملاحظاتك تصل مباشرة إلى فريق ناغي'
     },
     en: {
       dir: 'ltr',
-      title: 'Share your feedback',
-      subtitle: 'Your feedback helps us improve your experience',
-      q1: 'How was your experience with us?',
+      step1Title: 'What brings you in today?',
+      step1Sub: 'Pick the option closest to your visit',
+      step2Title: 'How was your experience?',
+      step2Sub: 'Did we meet what you came for?',
+      step3Title: 'Tell us more',
+      step3Sub: 'Your note helps us improve',
+      thanksTitle: 'Sent',
+      thanksSub: '',
       starsGroup: 'Rate your experience from one to five stars',
       star: 'of 5',
-      placeholder: 'Type your answer here...',
-      submit: 'Send Feedback',
+      placeholder: 'Type your answer here... (optional)',
+      helper: 'You can submit without writing anything',
       sending: 'Sending...',
-      back: 'Back',
       thanks: 'Thank you for your feedback!',
-      emptyError: 'Please write your answer',
+      fallbackQuestion: 'What would you like to tell us?',
       close: 'Close',
       fab: 'Share your feedback',
+      stepLabel: 'Step {n} of 3',
       footer: 'Your feedback goes directly to the NAGHI team'
     }
   };
 
-  // Rating captions are shown in BOTH languages at once (per design),
-  // so one string per rating. Index 0 = 1 star ... index 4 = 5 stars.
+  // Rating captions are shown in BOTH languages at once (per design).
+  // Index 0 = 1 star ... index 4 = 5 stars.
   const RATING_LABELS = [
     'سيء جداً · Very poor',
     'سيء · Poor',
@@ -592,77 +831,26 @@
   ];
 
   /* ================================================================
-     ❓  QUESTION MATRIX — 7 user types × 5 ratings × 2 languages
+     🖼️  LINE ICONS (Lucide-style, 1.8 stroke) used by reason tiles
      ================================================================ */
-  const QUESTIONS = {
-    'visitors': {
-      1: { en: 'What could we improve on our website?', ar: 'ما الذي يمكننا تحسينه في موقعنا؟' },
-      2: { en: 'What information was missing?', ar: 'ما المعلومات التي كانت ناقصة؟' },
-      3: { en: 'What could be better?', ar: 'ما الذي يمكن أن يكون أفضل؟' },
-      4: { en: 'What did you like most about our site?', ar: 'ما الذي أعجبك أكثر في موقعنا؟' },
-      5: { en: 'Would you recommend us to others? What stood out?', ar: 'هل ستوصي بنا للآخرين؟ ما الذي ميّزنا؟' }
-    },
-    'searchers': {
-      1: { en: 'Was it hard to find what you needed?', ar: 'هل كان من الصعب العثور على ما تحتاجه؟' },
-      2: { en: 'What were you searching for?', ar: 'عمّ كنت تبحث؟' },
-      3: { en: 'Did you find what you were looking for?', ar: 'هل وجدت ما كنت تبحث عنه؟' },
-      4: { en: 'What made your search easy?', ar: 'ما الذي جعل بحثك سهلاً؟' },
-      5: { en: 'Would you search on our site again?', ar: 'هل ستبحث في موقعنا مرة أخرى؟' }
-    },
-    'viewers': {
-      1: { en: 'What product information was missing?', ar: 'ما معلومات المنتج التي كانت ناقصة؟' },
-      2: { en: 'What details would help you decide?', ar: 'ما التفاصيل التي تساعدك على اتخاذ القرار؟' },
-      3: { en: 'Were the product details clear enough?', ar: 'هل كانت تفاصيل المنتج واضحة بما يكفي؟' },
-      4: { en: 'What helped you understand this product?', ar: 'ما الذي ساعدك على فهم هذا المنتج؟' },
-      5: { en: 'Are you planning to purchase this product?', ar: 'هل تخطط لشراء هذا المنتج؟' }
-    },
-    'comparers': {
-      1: { en: 'Was the comparison unclear or incomplete?', ar: 'هل كانت المقارنة غير واضحة أو ناقصة؟' },
-      2: { en: 'Which features would help your comparison?', ar: 'ما الميزات التي تساعدك في المقارنة؟' },
-      3: { en: 'Did the comparison help you decide?', ar: 'هل ساعدتك المقارنة على اتخاذ القرار؟' },
-      4: { en: 'Which product are you leaning toward, and why?', ar: 'أي منتج تميل إليه، ولماذا؟' },
-      5: { en: 'Will you complete the purchase?', ar: 'هل ستكمل عملية الشراء؟' }
-    },
-    'buyers': {
-      1: { en: 'What went wrong during checkout?', ar: 'ما الذي حدث بشكل خاطئ أثناء إتمام الشراء؟' },
-      2: { en: 'What made checkout difficult?', ar: 'ما الذي جعل إتمام الشراء صعباً؟' },
-      3: { en: 'Was the checkout process clear?', ar: 'هل كانت عملية إتمام الشراء واضحة؟' },
-      4: { en: 'What made checkout smooth for you?', ar: 'ما الذي جعل إتمام الشراء سلساً بالنسبة لك؟' },
-      5: { en: 'Would you shop with us again?', ar: 'هل ستتسوق معنا مرة أخرى؟' }
-    },
-    'inquiries': {
-      1: { en: 'What was the issue with your inquiry?', ar: 'ما المشكلة في استفسارك؟' },
-      2: { en: 'How could we assist you better?', ar: 'كيف يمكننا مساعدتك بشكل أفضل؟' },
-      3: { en: 'Is your inquiry being resolved adequately?', ar: 'هل يتم حل استفسارك بشكل مناسب؟' },
-      4: { en: 'What helped you the most?', ar: 'ما الذي ساعدك أكثر؟' },
-      5: { en: 'Are you satisfied with our response?', ar: 'هل أنت راضٍ عن ردنا؟' }
-    },
-    'after-sales': {
-      1: { en: 'What is the issue with your order or delivery?', ar: 'ما المشكلة في طلبك أو التوصيل؟' },
-      2: { en: 'What support do you need right now?', ar: 'ما الدعم الذي تحتاجه الآن؟' },
-      3: { en: 'Is your issue being handled well?', ar: 'هل تتم معالجة مشكلتك بشكل جيد؟' },
-      4: { en: 'What impressed you about our service?', ar: 'ما الذي أعجبك في خدمتنا؟' },
-      5: { en: 'Would you order from us again?', ar: 'هل ستطلب منا مرة أخرى؟' }
-    }
+  const ICONS = {
+    'car': '<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>',
+    'eye': '<path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+    'wrench': '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+    'map-pin': '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+    'tag': '<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/>',
+    'message-square': '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>'
   };
 
-  /* ================================================================
-     🔎  USER-TYPE DETECTION
-     The current URL (path + query) is matched against signals, most
-     specific first, so e.g. "/products/compare" → comparers, not
-     viewers. Anything unmatched falls back to 'visitors'.
-     ================================================================ */
-  function detectUserType() {
-    if (FORCE_USER_TYPE && QUESTIONS[FORCE_USER_TYPE]) return FORCE_USER_TYPE;
-    const url = (window.location.pathname + window.location.search).toLowerCase();
-    if (/checkout|cart|payment/.test(url))            return 'buyers';
-    if (/compare/.test(url))                          return 'comparers';
-    if (/orders|order-history|account/.test(url))     return 'after-sales';
-    if (/contact|inquiry|support/.test(url))          return 'inquiries';
-    if (/search/.test(url))                           return 'searchers';
-    if (/product/.test(url))                          return 'viewers';
-    return 'visitors';
+  function iconSvg(name) {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+           'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' +
+           (ICONS[name] || ICONS['message-square']) + '</svg>';
   }
+
+  /* ================================================================
+     🔎  HELPERS
+     ================================================================ */
 
   // Arabic is the default: only an explicitly-English page/browser
   // starts in English; anything else (Arabic or undetermined) → Arabic.
@@ -672,12 +860,28 @@
   }
 
   // Strip control characters and cap length. User text is only ever
-  // written to the page via textContent (never innerHTML), so it can
-  // never be interpreted as markup.
+  // written to the page via textContent / value (never innerHTML),
+  // so it can never be interpreted as markup.
   function sanitize(value) {
     return value.replace(/[\u0000-\u001F\u007F]/g, ' ')
                 .trim()
                 .slice(0, 2000);
+  }
+
+  // The follow-up question for the current reason + rating + language.
+  // Falls back to a generic question if a reason's set was removed,
+  // so editing REASONS can never crash the widget.
+  function getQuestion() {
+    const set = QUESTIONS[reasonId];
+    const q = set && set[lang] && set[lang][rating];
+    return q || STRINGS[lang].fallbackQuestion;
+  }
+
+  function findReason(id) {
+    for (let i = 0; i < REASONS.length; i++) {
+      if (REASONS[i].id === id) return REASONS[i];
+    }
+    return null;
   }
 
   /* ================================================================
@@ -694,41 +898,77 @@
   const titleEl   = $('.mn-title');
   const subtitleEl= $('.mn-subtitle');
   const langBtns  = Array.prototype.slice.call(root.querySelectorAll('.mn-lang'));
-  const steps     = [$('.mn-step-1'), $('.mn-step-2'), $('.mn-step-3')];
-  const q1El      = $('.mn-q1');
+  const dotsEl    = $('.mn-dots');
+  const dots      = Array.prototype.slice.call(root.querySelectorAll('.mn-dot'));
+  const steps     = [$('.mn-step-1'), $('.mn-step-2'), $('.mn-step-3'), $('.mn-step-4')];
+  const reasonsEl = $('.mn-reasons');
+  const pillEl    = $('.mn-pill');
   const starsEl   = $('.mn-stars');
   const starBtns  = Array.prototype.slice.call(root.querySelectorAll('.mn-star'));
   const captionEl = $('.mn-caption');
   const miniEl    = $('.mn-mini');
-  const miniCapEl = $('.mn-mini-caption');
-  const q2El      = $('.mn-q2');
+  const q3El      = $('.mn-q3');
   const textarea  = $('.mn-textarea');
-  const errorEl   = $('.mn-error');
   const submitBtn = $('.mn-submit');
+  const helperEl  = $('.mn-helper');
   const backBtn   = $('.mn-back');
   const thanksEl  = $('.mn-thanks');
   const footerEl  = $('.mn-footer-text');
 
-  let lang        = detectLanguage();
-  let userType    = detectUserType();
-  let rating      = 0;          // 0 = nothing selected yet
-  let step        = 1;
-  let isOpen      = false;
-  let isSending   = false;
-  let hasOpened   = false;      // auto-open fires at most once per page
-  let advanceTimer = null;      // 400ms pause between star tap and step 2
-  let closeTimer   = null;      // 2s thank-you auto-close
+  let lang      = detectLanguage();
+  let reasonId  = null;       // set on step 1
+  let rating    = 0;          // 0 = nothing selected yet
+  let step      = 1;
+  let isOpen    = false;
+  let isSending = false;
+  let hasOpened = false;      // auto-open fires at most once per page
+  let advanceTimer = null;    // 400ms pause between star tap and step 3
+  let closeTimer   = null;    // 2s thank-you auto-close
 
-  // Build the 5 read-only mini stars shown at the top of step 2.
-  const STAR_PATH = starBtns[0].querySelector('svg').outerHTML;
-  miniEl.innerHTML = STAR_PATH + STAR_PATH + STAR_PATH + STAR_PATH + STAR_PATH;
+  // Build the 5 read-only mini stars shown at the top of step 3.
+  const STAR_SVG = starBtns[0].querySelector('svg').outerHTML;
+  miniEl.innerHTML = STAR_SVG + STAR_SVG + STAR_SVG + STAR_SVG + STAR_SVG;
   const miniStars = Array.prototype.slice.call(miniEl.querySelectorAll('svg'));
 
   /* ================================================================
-     ⭐  STAR FILL LOGIC
-     Tapping star N fills stars 1..N gold (standard star-rating fill).
-     `renderStars` paints the committed rating; `paintFill` is also
-     used for the transient hover preview.
+     📋  STEP 1 — reason tiles, generated from the REASONS array so
+     reordering/removing/adding reasons needs no other code changes.
+     Tiles show the current language as the main label and the other
+     language muted beneath it. (Icon markup comes from the trusted
+     ICONS config above — never from user input.)
+     ================================================================ */
+  reasonsEl.innerHTML = REASONS.map(function (r) {
+    return '<button class="mn-reason" type="button" data-id="' + r.id + '">' +
+             '<span class="mn-reason-icon">' + iconSvg(r.icon) + '</span>' +
+             '<span class="mn-reason-labels">' +
+               '<span class="mn-reason-main"></span>' +
+               '<span class="mn-reason-sub"></span>' +
+             '</span>' +
+           '</button>';
+  }).join('');
+  const reasonBtns = Array.prototype.slice.call(reasonsEl.querySelectorAll('.mn-reason'));
+
+  function renderReasonLabels() {
+    const other = lang === 'ar' ? 'en' : 'ar';
+    reasonBtns.forEach(function (btn) {
+      const r = findReason(btn.getAttribute('data-id'));
+      if (!r) return;
+      btn.querySelector('.mn-reason-main').textContent = r[lang];
+      btn.querySelector('.mn-reason-sub').textContent  = r[other];
+    });
+  }
+
+  reasonBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      reasonId = btn.getAttribute('data-id');
+      showStep(2);
+    });
+  });
+
+  /* ================================================================
+     ⭐  STEP 2 — star fill logic
+     Tapping star N fills stars 1..N gold. `renderStars` paints the
+     committed rating; `paintFill` also drives the hover preview.
      ================================================================ */
   function paintFill(n) {
     starBtns.forEach(function (btn, i) {
@@ -755,12 +995,12 @@
     renderStars();
   }
 
-  // Confirm the rating: show the fill for ~400ms, then go to step 2.
+  // Confirm the rating: show the fill for ~400ms, then go to step 3.
   function confirmRating(n) {
     selectRating(n);
     advanceTimer = setTimeout(function () {
       advanceTimer = null;
-      showStep(2);
+      showStep(3);
     }, 400);
   }
 
@@ -770,7 +1010,7 @@
     btn.addEventListener('click', function () { confirmRating(value); });
     // Desktop hover preview: fill 1..N under the cursor.
     btn.addEventListener('mouseenter', function () {
-      if (step === 1) paintFill(value);
+      if (step === 2) paintFill(value);
     });
   });
   starsEl.addEventListener('mouseleave', function () { paintFill(rating); });
@@ -789,28 +1029,51 @@
   });
 
   /* ================================================================
-     🪜  STEPS
+     🪜  STEPS — header (title/subtitle/dots) and body change together
      ================================================================ */
+  function renderHeader() {
+    const t = STRINGS[lang];
+    const titles = [t.step1Title, t.step2Title, t.step3Title, t.thanksTitle];
+    const subs   = [t.step1Sub,   t.step2Sub,   t.step3Sub,   t.thanksSub];
+    titleEl.textContent = titles[step - 1];
+    subtitleEl.textContent = subs[step - 1];
+    const now = Math.min(step, 3);   // thank-you keeps the dots at 3/3
+    dots.forEach(function (d, i) {
+      d.classList.toggle('mn-now', i + 1 === now);
+      d.classList.toggle('mn-done', i + 1 < now);
+    });
+    dotsEl.setAttribute('aria-label', t.stepLabel.replace('{n}', String(now)));
+  }
+
+  function renderPill() {
+    const r = reasonId && findReason(reasonId);
+    if (!SHOW_REASON_PILL || !r) { pillEl.hidden = true; return; }
+    pillEl.hidden = false;
+    pillEl.innerHTML = iconSvg(r.icon) + '<span></span>';
+    pillEl.querySelector('span').textContent = r[lang];
+  }
+
   function showStep(n) {
     step = n;
     steps.forEach(function (el, i) { el.hidden = (i + 1 !== n); });
+    renderHeader();
 
-    if (n === 2) {
-      // Context-aware question for this user type + rating.
-      q2El.textContent = QUESTIONS[userType][rating][lang];
+    if (n === 1) {
+      reasonBtns[0] && reasonBtns[0].focus();
+    } else if (n === 2) {
+      renderPill();
+      renderStars();
+      starBtns[Math.max(rating, 1) - 1].focus();
+    } else if (n === 3) {
+      q3El.textContent = getQuestion();
       miniStars.forEach(function (svg, i) {
         svg.classList.toggle('mn-on', i < rating);
       });
-      miniCapEl.textContent = RATING_LABELS[rating - 1];
-      errorEl.hidden = true;
       textarea.focus();
-    } else if (n === 1) {
-      renderStars();
-      starBtns[Math.max(rating, 1) - 1].focus();
     }
   }
 
-  backBtn.addEventListener('click', function () { showStep(1); });
+  backBtn.addEventListener('click', function () { showStep(2); });
 
   /* ================================================================
      🌐  LANGUAGE & RTL SWITCHING
@@ -825,14 +1088,10 @@
     modal.setAttribute('dir', t.dir);
     modal.setAttribute('lang', lang);
 
-    titleEl.textContent    = t.title;
-    subtitleEl.textContent = t.subtitle;
-    q1El.textContent       = t.q1;
-    thanksEl.textContent   = t.thanks;
-    footerEl.textContent   = t.footer;
-    errorEl.textContent    = t.emptyError;
-    backBtn.textContent    = t.back;
-    submitBtn.textContent  = isSending ? t.sending : t.submit;
+    thanksEl.textContent = t.thanks;
+    footerEl.textContent = t.footer;
+    helperEl.textContent = t.helper;
+    if (isSending) submitBtn.textContent = t.sending;
     textarea.setAttribute('placeholder', t.placeholder);
     closeBtn.setAttribute('aria-label', t.close);
     fab.setAttribute('aria-label', t.fab);
@@ -846,10 +1105,12 @@
       btn.setAttribute('aria-pressed', active ? 'true' : 'false');
     });
 
-    // The follow-up question is language-dependent — refresh it live.
-    if (step === 2 && rating > 0) {
-      q2El.textContent = QUESTIONS[userType][rating][lang];
-    }
+    // Step-dependent text: header, reason tiles, pill, and the
+    // follow-up question all refresh live, even mid-flow.
+    renderHeader();
+    renderReasonLabels();
+    if (step >= 2) renderPill();
+    if (step === 3) q3El.textContent = getQuestion();
   }
 
   langBtns.forEach(function (btn) {
@@ -865,15 +1126,16 @@
   function resetWidget() {
     if (advanceTimer) { clearTimeout(advanceTimer); advanceTimer = null; }
     if (closeTimer)   { clearTimeout(closeTimer);   closeTimer = null; }
+    reasonId = null;
     rating = 0;
     isSending = false;
     textarea.value = '';
-    errorEl.hidden = true;
     submitBtn.disabled = false;
-    submitBtn.textContent = STRINGS[lang].submit;
+    submitBtn.textContent = 'إرسال · Send';
     step = 1;
     steps.forEach(function (el, i) { el.hidden = (i !== 0); });
     renderStars();
+    renderHeader();
   }
 
   function openModal() {
@@ -886,7 +1148,7 @@
     requestAnimationFrame(function () {
       requestAnimationFrame(function () { overlay.classList.add('mn-open'); });
     });
-    starBtns[Math.max(rating, 1) - 1].focus();
+    reasonBtns[0] && reasonBtns[0].focus();
   }
 
   function closeModal() {
@@ -934,7 +1196,8 @@
      POSTs application/x-www-form-urlencoded to the formResponse
      endpoint with mode:'no-cors' (Google Forms sends no CORS headers,
      so the response is opaque — success cannot be read; verify in the
-     linked Sheet instead). On any failure the user still sees the
+     linked Sheet instead). The note may be empty — that is a normal,
+     complete submission. On any failure the user still sees the
      thank-you screen; the error goes to console.warn only.
      ================================================================ */
   function submitToGoogleForm(data) {
@@ -946,7 +1209,7 @@
                      encodeURIComponent(FEEDBACK_CONFIG.formId) + '/formResponse';
     const body = new URLSearchParams();
     body.append(FEEDBACK_CONFIG.fields.language, data.language);
-    body.append(FEEDBACK_CONFIG.fields.userType, data.userType);
+    body.append(FEEDBACK_CONFIG.fields.reason,   data.reason);
     body.append(FEEDBACK_CONFIG.fields.rating,   String(data.rating));
     body.append(FEEDBACK_CONFIG.fields.answer,   data.answer);
     body.append(FEEDBACK_CONFIG.fields.pageUrl,  data.pageUrl);
@@ -960,23 +1223,15 @@
 
   submitBtn.addEventListener('click', function () {
     if (isSending) return;
-    const answer = sanitize(textarea.value);
-    if (!answer) {
-      errorEl.textContent = STRINGS[lang].emptyError;
-      errorEl.hidden = false;
-      textarea.focus();
-      return;
-    }
-    errorEl.hidden = true;
     isSending = true;
     submitBtn.disabled = true;
     submitBtn.textContent = STRINGS[lang].sending;
 
     submitToGoogleForm({
       language: lang,
-      userType: userType,
+      reason:   reasonId || 'other',
       rating:   rating,
-      answer:   answer,
+      answer:   sanitize(textarea.value),   // may be '' — that's fine
       pageUrl:  window.location.href
     })
       .catch(function (err) {
@@ -984,14 +1239,9 @@
       })
       .then(function () {
         if (!isOpen) return;           // user closed while sending
-        showStep(3);
+        showStep(4);
         closeTimer = setTimeout(closeModal, 2000);
       });
-  });
-
-  // Clear the validation message as soon as the user starts typing.
-  textarea.addEventListener('input', function () {
-    if (!errorEl.hidden && textarea.value.trim()) errorEl.hidden = true;
   });
 
   /* ================================================================
