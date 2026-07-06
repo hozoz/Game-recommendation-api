@@ -1,331 +1,333 @@
 # MY NAGHI Feedback Widget — Integration Guide
 
-**Star Rating Edition** · `widget.html`
+**3-Step Edition** · `widget.html`
 
-A self-contained customer feedback popup for **mynaghi.sa**: 5-star rating → context-aware follow-up question → thank you. Arabic-first with full RTL, English toggle, automatic user-type detection from the URL, and submission to Google Forms — no backend required.
+This guide assumes **no coding experience**. It walks you through previewing the widget on your computer, editing its content, connecting it to a Google Form, publishing it on **mynaghi.sa**, and updating it later.
 
-- **File:** `widget.html` (~40 KB unminified, single file, zero dependencies except the Space Grotesk font from Google Fonts)
-- **Browsers:** iOS Safari, Android Chrome, desktop Chrome / Firefox / Safari / Edge
+**What the widget does:** a floating button opens a popup with three quick steps — the customer picks a **reason for their visit**, gives a **star rating (1–5)**, and can optionally write a **note** (they can also just press Send with an empty box). Everything is bilingual: Arabic by default, English via a toggle. Each response is saved to a Google Sheet.
 
 **Contents**
 
-1. [Google Form setup](#1-google-form-setup)
-2. [Embedding on mynaghi.sa](#2-embedding-on-mynaghisa)
-3. [Configuration reference](#3-configuration-reference)
-4. [Testing checklist](#4-testing-checklist)
-5. [Troubleshooting](#5-troubleshooting)
+- [A. Preview it on your own computer](#a-preview-it-on-your-own-computer)
+- [B. Edit the content (no coding needed)](#b-edit-the-content-no-coding-needed)
+- [C. Set up the Google Form](#c-set-up-the-google-form)
+- [D. Publish it on mynaghi.sa](#d-publish-it-on-mynaghisa)
+- [E. Test on the live site](#e-test-on-the-live-site)
+- [F. Update it later](#f-update-it-later)
+- [G. Troubleshooting](#g-troubleshooting)
 
 ---
 
-## 1. Google Form setup
+## A. Preview it on your own computer
 
-The widget POSTs every submission to a Google Form, so responses land in a Google Sheet you control.
+Do this **before** touching the website — you can see and click everything locally.
 
-### 1.1 Create the form
+1. Save `widget.html` into any folder on your computer (e.g. `Documents/naghi-widget`).
+2. Preview it in one of two ways:
+
+   **Simplest — just open it:**
+   Double-click `widget.html`. It opens in your browser and works immediately. You'll see the lilac floating button in the bottom-left corner (bottom-left because Arabic mode is the default).
+
+   **Recommended — Live Server (closer to real website conditions, auto-reloads when you edit):**
+   1. Install [VS Code](https://code.visualstudio.com/) (free).
+   2. In VS Code: **File → Open Folder…** and pick the folder containing `widget.html`.
+   3. Click the **Extensions** icon in the left sidebar (four squares), search for **“Live Server”** (by Ritwick Dey), click **Install**.
+   4. In the file list, **right-click `widget.html` → “Open with Live Server”**.
+   5. Your browser opens automatically at an address like `http://127.0.0.1:5500/widget.html` — that address also appears in the blue bar at the bottom of VS Code (“Port: 5500”). Keep this tab open; every time you save the file, the preview refreshes by itself.
+
+3. **What to check in the preview:**
+   - Click the floating button → the popup opens on the **reason screen** with 6 options.
+   - Pick a reason → the **star screen** appears (your reason shows in a small pill).
+   - Tap different stars → the caption under them changes (e.g. «ممتاز · Excellent»).
+   - After tapping a star you land on the **note screen** — check that **the question matches the reason and the star** you chose (try a 1-star and a 5-star for the same reason).
+   - Switch **العربية / EN** at the top — every text should change instantly, and the layout should flip direction.
+   - Press **إرسال · Send** with the box **empty** — this is allowed; you should see the thank-you screen, and the popup closes by itself after 2 seconds.
+
+> Note: until you complete part C, pressing Send doesn't go anywhere — the widget just shows the thank-you. That's expected.
+
+---
+
+## B. Edit the content (no coding needed)
+
+Open `widget.html` in any text editor (VS Code, Notepad, TextEdit in plain-text mode). Everything you'd want to change lives in clearly-labelled blocks **near the top of the `<script>` section** (roughly the middle of the file — search for the block names below). Each block has a “HOW TO EDIT THIS” comment above it.
+
+After **any** change: save the file and refresh the preview tab (Live Server refreshes automatically).
+
+### Reorder or remove a reason
+
+Search for `REASONS`. Each reason is one line:
+
+```javascript
+const REASONS = [
+  { id: 'buy',      ar: 'أرغب في شراء سيارة',   en: 'Looking to buy a car',  icon: 'car' },
+  { id: 'browse',   ar: 'أتصفّح فقط',           en: 'Just browsing',         icon: 'eye' },
+  ...
+];
+```
+
+- **Reorder:** move a whole line up or down. The tiles follow this order exactly.
+- **Remove:** delete the whole line (including the trailing comma). Its questions in `QUESTIONS` can stay — they're simply unused — or you can delete that block too. **The widget never breaks either way**; if a reason somehow has no questions, a polite generic question is shown instead.
+
+### Add a new reason
+
+1. Copy an existing line in `REASONS` and paste it where you want it in the order.
+2. Give it a **new `id`** (short English word, no spaces), the **Arabic and English labels**, and an **icon name** — one of: `car`, `eye`, `wrench`, `map-pin`, `tag`, `message-square`.
+3. Search for `QUESTIONS`, copy an entire existing block (e.g. everything from `'other': {` to its closing `},`), paste it, and change the key to your new id and the 10 questions (5 English + 5 Arabic).
+
+### Change any question
+
+Search for `QUESTIONS`. It is organized as **reason → language → star number**:
+
+```javascript
+'service': {
+  en: {
+    1: 'What went wrong with booking your service?',
+    ...
+  },
+  ar: {
+    1: 'ما الذي حدث بشكل خاطئ في حجز موعد الصيانة؟',
+    ...
+  }
+},
+```
+
+Find the reason id, then `en` or `ar`, then the star number (1–5), and edit the text between the quotes.
+
+### Change other texts (titles, hints, buttons)
+
+Search for `STRINGS` — every title, subtitle, placeholder, and message exists once under `ar:` and once under `en:`. Edit the text to the right of each colon.
+
+### Change colors
+
+Search for `COLORS & DESIGN TOKENS` at the top of the `<style>` block:
+
+```css
+--mn-lilac:        #964BFA;   /* primary — active states, CTAs  */
+```
+
+Change any hex value (e.g. the lilac line above) and the whole widget re-themes.
+
+### Turn the reason pill on/off
+
+Search for `SHOW_REASON_PILL`:
+
+```javascript
+const SHOW_REASON_PILL = true;   // set to false to hide the reason pill on the star step
+```
+
+### Change when the widget opens
+
+Search for `AUTO_OPEN`:
+
+```javascript
+const AUTO_OPEN_AFTER_MS = null;          // e.g. 30000 = auto-open after 30 seconds
+const AUTO_OPEN_ON_SCROLL_PERCENT = null; // e.g. 60 = auto-open at 60% scroll
+```
+
+Both `null` (recommended) means the widget opens **only** when the customer taps the floating button. Auto-open fires at most once per page visit.
+
+---
+
+## C. Set up the Google Form
+
+This connects the widget to a Google Sheet where all responses arrive. You only do this once.
+
+### C.1 Create the form
 
 1. Go to [forms.google.com](https://forms.google.com) and create a **blank form**. Name it e.g. *MY NAGHI Website Feedback*.
-2. Add exactly these **5 questions** (types as shown):
+2. Add these **5 questions** with these types:
 
-   | # | Question title | Type | What the widget sends |
-   |---|---|---|---|
-   | 1 | Language | Short answer | `ar` or `en` |
-   | 2 | User Type | Short answer | `visitors`, `searchers`, `viewers`, `comparers`, `buyers`, `inquiries`, or `after-sales` |
-   | 3 | Rating | Short answer | `1`–`5` |
-   | 4 | Feedback | Paragraph | The customer's written answer |
-   | 5 | Page URL | Short answer | The full URL the widget was opened on |
+   | # | Question title | Type |
+   |---|---|---|
+   | 1 | Language | Short answer |
+   | 2 | Reason | Short answer |
+   | 3 | Rating | Short answer |
+   | 4 | Feedback | **Paragraph** |
+   | 5 | Page URL | Short answer |
 
-3. Leave every question **optional** — a question marked *required* that arrives empty makes Google silently reject the whole submission.
-4. Click the **Responses** tab → the green Sheets icon → **Create spreadsheet**. This is where feedback arrives.
-5. Under **Settings** (⚙️): make sure **“Limit to 1 response”** is **OFF** (it would force customers to sign in to Google, which kills submissions).
+3. Leave **every question optional** — do NOT toggle “Required” on any of them. (The note is optional in the widget; a required field that arrives empty makes Google silently reject the entire response.) Google records the **timestamp automatically** — you don't need a field for it.
+4. In **Settings (⚙️)**: make sure **“Limit to 1 response” is OFF** (otherwise customers would be forced to sign in to Google).
+5. Click the **Responses** tab → the green **Sheets icon** → **Create spreadsheet**. This Sheet is where feedback lands.
 
-### 1.2 Get the Form ID
+### C.2 Get the Form ID
 
-Click **Send** (top right) → the link icon 🔗. You get a URL like:
+1. Click **Send** (top right) → the **link icon 🔗** → copy the link. It looks like:
 
-```
-https://docs.google.com/forms/d/e/1FAIpQLSe_aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789/viewform
-```
+   ```
+   https://docs.google.com/forms/d/e/1FAIpQLSe_aBcDeF...long-code.../viewform
+   ```
 
-The long token between `/d/e/` and `/viewform` is your **Form ID**:
+2. The long code **between `/d/e/` and `/viewform`** is your **Form ID**. Copy it.
 
-```
-1FAIpQLSe_aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789
-```
+> ⚠️ Use this link from the **Send** button — not the address bar of the editing page. Only the Send link contains the public ID that accepts submissions.
 
-> ⚠️ Use the **`/d/e/` (public) ID** from the Send link — not the shorter edit-page ID visible in your browser's address bar while editing. Only the public ID accepts submissions.
+### C.3 Get the five entry IDs (“Get pre-filled link” method)
 
-### 1.3 Find each `entry.XXXXXXXXX` field ID (pre-filled link method)
+Each question has a hidden ID like `entry.123456789`. To find them:
 
-Every question in a Google Form has a hidden numeric name like `entry.123456789`. The widget needs these IDs to file each value under the right column. The official, reliable way to discover them:
-
-1. In the form editor, click the **⋮ (three-dot) menu** top right → **“Get pre-filled link”**.
-2. A preview of your form opens. **Type a recognizable dummy value into every field**:
+1. In the form editor, click the **⋮ three-dot menu** (top right) → **“Get pre-filled link”**.
+2. A preview of the form opens. **Type a recognizable dummy word in every field:**
    - Language → `LANG`
-   - User Type → `TYPE`
+   - Reason → `REASON`
    - Rating → `RATING`
    - Feedback → `ANSWER`
    - Page URL → `URL`
-3. Click **“Get link”** at the bottom, then **“Copy link”**.
-4. Paste the copied link into a text editor. It looks like this (split here for readability):
+3. Click **“Get link”** (bottom) → **“Copy link”**.
+4. Paste the link into any text editor. Inside it you'll find five pairs like:
 
    ```
-   https://docs.google.com/forms/d/e/1FAIpQLSe.../viewform?usp=pp_url
-     &entry.111111111=LANG
-     &entry.222222222=TYPE
-     &entry.333333333=RATING
-     &entry.444444444=ANSWER
-     &entry.555555555=URL
+   entry.111111111=LANG
+   entry.222222222=REASON
+   entry.333333333=RATING
+   entry.444444444=ANSWER
+   entry.555555555=URL
    ```
 
-5. Each `entry.NNNNNNNNN=DUMMY` pair tells you which entry ID belongs to which field: the ID paired with `LANG` is your Language field, the one paired with `RATING` is your Rating field, and so on. **Match by the dummy value, not by position** — Google does not guarantee the order of parameters in the URL.
+5. The number attached to each dummy word is that field's entry ID. **Match by the word, not the order** — the order in the link is not guaranteed.
 
-### 1.4 Update `FEEDBACK_CONFIG` in widget.html
+### C.4 Paste the IDs into the widget
 
-Open `widget.html` and find this block at the **top of the `<script>` section** — these are the **only lines you must change**:
+In `widget.html`, search for `FEEDBACK_CONFIG` (the first block in the script) and replace the placeholders:
 
 ```javascript
 const FEEDBACK_CONFIG = {
-  formId: 'YOUR_FORM_ID',                 // ← paste your Form ID (step 1.2)
+  formId: 'YOUR_FORM_ID',                 // ← paste the Form ID from C.2
   fields: {
-    language: 'entry.XXXXXXXXX',          // ← entry ID paired with LANG
-    userType: 'entry.XXXXXXXXX',          // ← entry ID paired with TYPE
-    rating:   'entry.XXXXXXXXX',          // ← entry ID paired with RATING
-    answer:   'entry.XXXXXXXXX',          // ← entry ID paired with ANSWER
-    pageUrl:  'entry.XXXXXXXXX'           // ← entry ID paired with URL
+    language: 'entry.XXXXXXXXX',          // ← the entry ID paired with LANG
+    reason:   'entry.XXXXXXXXX',          // ← the entry ID paired with REASON
+    rating:   'entry.XXXXXXXXX',          // ← the entry ID paired with RATING
+    answer:   'entry.XXXXXXXXX',          // ← the entry ID paired with ANSWER
+    pageUrl:  'entry.XXXXXXXXX'           // ← the entry ID paired with URL
   }
 };
 ```
 
-Filled in, it should look like:
+Keep the quotes; change only the text inside them. Save the file.
 
-```javascript
-const FEEDBACK_CONFIG = {
-  formId: '1FAIpQLSe_aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789',
-  fields: {
-    language: 'entry.111111111',
-    userType: 'entry.222222222',
-    rating:   'entry.333333333',
-    answer:   'entry.444444444',
-    pageUrl:  'entry.555555555'
-  }
-};
-```
+### C.5 Confirm it works
 
-> Until `formId` is changed from `YOUR_FORM_ID`, the widget runs fully but **skips the network call** and logs the would-be payload with `console.warn` — handy for testing the UI before the form is ready.
+1. Refresh the preview, open the widget, pick a reason, tap a star, write “test”, press Send.
+2. Open your **Google Sheet** — a new row should appear within seconds with the language, reason, rating, your note, the page address, and a timestamp.
+3. If no row appears, see [Troubleshooting](#g-troubleshooting).
 
 ---
 
-## 2. Embedding on mynaghi.sa
+## D. Publish it on mynaghi.sa
 
-### Method A — Paste into the page (fastest, recommended)
+No Replit or any other service is required — the widget is one file. Two ways to put it live:
+
+### Method 1 — Paste into the page (quickest)
 
 1. Open `widget.html` in a text editor.
-2. Copy **everything between** these two marker comments, inclusive (the `<link>` font tags, the `<style>` block, the `<div id="mn-feedback-root">` markup, and the `<script>` block):
+2. Select and copy **everything between these two marker lines, including them**:
 
    ```
    <!-- ================= MYNAGHI WIDGET START ================= -->
-   ...
+   ...everything in between...
    <!-- ================= MYNAGHI WIDGET END ================= -->
    ```
 
-3. Paste the copied block into your site template **just before the closing `</body>` tag**:
+3. Paste it into the website **just before the closing `</body>` tag** of the page template.
+   - **Custom-built site:** ask whoever maintains the site template to paste it into the shared footer template so it appears on every page.
+   - **Site builders / CMS (WordPress, Shopify, Wix, Webflow, Salla, Zid, etc.):** look for a setting called **“Custom HTML”, “Custom code”, “Footer code”, or “Code injection → Footer”** and paste the block there. That is exactly the “before `</body>`” spot.
+
+That's the whole job — the widget carries its own styles and cannot interfere with the site's design.
+
+### Method 2 — Host the file + one loader line (easier to update later)
+
+1. Upload `widget.html` to the site's hosting or CDN, e.g. so it's reachable at
+   `https://mynaghi.sa/assets/widget.html` (any static-file location works).
+2. Add this **one block** just before `</body>` on every page (same “footer code” spot as above):
 
    ```html
-       <!-- ...existing page content... -->
-
-       <!-- MY NAGHI feedback widget -->
-       <!-- (paste the copied block here) -->
-
-   </body>
-   </html>
+   <!-- MY NAGHI feedback widget loader -->
+   <script>
+   (function () {
+     fetch('https://mynaghi.sa/assets/widget.html')
+       .then(function (r) { return r.text(); })
+       .then(function (html) {
+         var doc = new DOMParser().parseFromString(html, 'text/html');
+         doc.querySelectorAll('link[rel], style, #mn-feedback-root')
+           .forEach(function (node) { document.body.appendChild(document.adoptNode(node)); });
+         doc.querySelectorAll('script').forEach(function (s) {
+           var el = document.createElement('script');
+           el.textContent = s.textContent;
+           document.body.appendChild(el);
+         });
+       })
+       .catch(function (e) { console.warn('MY NAGHI widget failed to load:', e); });
+   })();
+   </script>
    ```
 
-That's it. The widget's styles are fully scoped under `#mn-feedback-root`, so nothing leaks into your page CSS and vice versa. Put the block in the shared site-wide template/footer so it appears on every page — user-type detection adapts the questions per page automatically.
+   (Replace the URL with wherever you uploaded the file. Host it on the **same domain** as the site, or on a CDN configured to allow the site to fetch it.)
 
-### Method B — Host the file + loader script
-
-Host `widget.html` on your domain or CDN (e.g. `https://mynaghi.sa/assets/widget.html`), then add this loader before `</body>` on every page:
-
-```html
-<!-- MY NAGHI feedback widget loader -->
-<script>
-(function () {
-  fetch('https://mynaghi.sa/assets/widget.html')
-    .then(function (r) { return r.text(); })
-    .then(function (html) {
-      var doc = new DOMParser().parseFromString(html, 'text/html');
-      // 1. Adopt styles, font links, and the widget markup
-      doc.querySelectorAll('link[rel], style, #mn-feedback-root')
-        .forEach(function (node) { document.body.appendChild(document.adoptNode(node)); });
-      // 2. Re-create scripts so the browser executes them
-      doc.querySelectorAll('script').forEach(function (s) {
-        var el = document.createElement('script');
-        el.textContent = s.textContent;
-        document.body.appendChild(el);
-      });
-    })
-    .catch(function (e) { console.warn('MY NAGHI widget failed to load:', e); });
-})();
-</script>
-```
-
-Notes:
-
-- Host the file on the **same domain** as the site, or on a CDN that sends CORS headers (`Access-Control-Allow-Origin` permitting your site) — otherwise the `fetch` is blocked.
-- Method B lets you update the widget in one place for the whole site.
+**Trade-off:** Method 1 is instant but every future edit means re-pasting into the site. Method 2 means future edits only require **re-uploading one file** — the whole site picks up the new version automatically. If you expect to tweak questions over time, use Method 2.
 
 ---
 
-## 3. Configuration reference
+## E. Test on the live site
 
-All settings live at the **top of the `<script>` block** in `widget.html`.
+Go through this list on the real website after publishing:
 
-### `FEEDBACK_CONFIG`
-
-The Google Forms destination (section 1.4). The only mandatory configuration.
-
-### `FORCE_USER_TYPE`
-
-```javascript
-const FORCE_USER_TYPE = null;
-```
-
-- `null` (default) — the user type is auto-detected from the page URL.
-- Any of `'visitors'`, `'searchers'`, `'viewers'`, `'comparers'`, `'buyers'`, `'inquiries'`, `'after-sales'` — forces that type regardless of URL. **Use for testing** each question set, then set back to `null` for production.
-
-Auto-detection rules (matched against the URL path + query string, most specific first):
-
-| Type | URL contains | Question focus |
-|---|---|---|
-| `buyers` | `checkout`, `cart`, `payment` | Checkout friction |
-| `comparers` | `compare` | Comparison clarity |
-| `after-sales` | `orders`, `order-history`, `account` | Post-purchase & delivery |
-| `inquiries` | `contact`, `inquiry`, `support` | Support quality |
-| `searchers` | `search` | Search & findability |
-| `viewers` | `product` | Product info completeness |
-| `visitors` | anything else (default) | General site experience |
-
-### Auto-open triggers
-
-```javascript
-const AUTO_OPEN_AFTER_MS = null;          // e.g. 30000 → auto-open after 30 s
-const AUTO_OPEN_ON_SCROLL_PERCENT = null; // e.g. 60 → auto-open at 60 % scroll
-```
-
-Both are `null` by default: **the widget opens only via the floating button**, the recommended behavior for this audience. Auto-open fires **at most once per page load** and never if the visitor already opened the widget themselves.
-
-### Language behavior
-
-Arabic is the default. The widget reads `document.documentElement.lang`, falling back to `navigator.language`; only a value starting with `en` starts the widget in English — anything else (Arabic or undetermined) starts in Arabic. Visitors switch instantly with the **العربية / EN** pills; no reload.
-
-### Colors (CSS variables)
-
-At the top of the `<style>` block, on `#mn-feedback-root`:
-
-```css
---mn-lilac:        #964BFA;   /* primary — CTAs, active states */
---mn-lilac-dark:   #6F2DD4;   /* hover on primary buttons      */
---mn-lilac-subtle: #F2EAFF;   /* hover bg on option buttons    */
---mn-black:        #1A1A1A;   /* primary text                  */
---mn-bluegrey:     #6B7D99;   /* secondary text                */
---mn-bluegrey-lt:  #A8B4C8;   /* muted hints / captions        */
---mn-sand:         #EDE5D0;   /* header accent                 */
---mn-sand-lt:      #F6F1E6;   /* header background             */
---mn-grey-100:     #F5F5F5;   /* footer background             */
---mn-grey-200:     #E8E8E8;   /* borders, unfilled stars       */
---mn-gold:         #F5B301;   /* filled stars ONLY             */
-```
-
-Change a value here and the whole widget re-themes — no other edits needed.
-
-### Text and questions
-
-- All UI strings (both languages) live in the `STRINGS` object; the bilingual rating captions live in `RATING_LABELS`.
-- All 35 follow-up questions (× 2 languages = 70 strings) live in the `QUESTIONS` object, keyed by user type → star rating (1–5) → language (`en` / `ar`). Edit the text freely; keep the structure.
+- [ ] The lilac floating button appears (bottom-left, because Arabic is default).
+- [ ] It opens the popup; the page behind is dimmed and blurred.
+- [ ] All **6 reasons** show, in the right order, each with its icon and both languages.
+- [ ] For **each reason**, each of the **5 stars** leads to the right follow-up question — 30 combinations. (Quick spot-check on live + full check in local preview is fine.)
+- [ ] Arabic is the default and the layout is right-to-left: close button top-left, text right-aligned; **stars still fill left-to-right** (that's intentional).
+- [ ] The **EN** pill switches every text instantly, including mid-flow.
+- [ ] Pressing **Send with an empty box** works and shows the thank-you.
+- [ ] A test response **arrives in the Google Sheet** with all five values.
+- [ ] Looks right on a phone — also try a very narrow one (or use the browser's device mode at **320 px** width): all five stars fit, nothing overflows.
+- [ ] Keyboard works: Tab moves through everything, arrow keys move the star selection, Enter confirms, Escape closes. A screen reader announces the dialog and the selected rating.
+- [ ] **No red errors in the browser console.** To open the console: press **F12** (Windows) or **Cmd+Option+I** (Mac), then click the **“Console”** tab. Red lines are errors; the widget should produce none.
 
 ---
 
-## 4. Testing checklist
+## F. Update it later
 
-Tip: open `widget.html` **directly in a browser** — it works standalone, no server required.
+To change a question, a reason, a color, or any text **after** the widget is live:
 
-**Stars**
+1. Edit `widget.html` as described in [part B](#b-edit-the-content-no-coding-needed).
+2. Check it locally (part A).
+3. Publish the change:
+   - **Method 2 users:** re-upload `widget.html` to the same location, overwriting the old file. Done — the whole site updates.
+   - **Method 1 users:** delete the previously-pasted block from the site template / footer-code box and paste the new version in its place.
+4. Refresh the live site and verify.
 
-- [ ] Tapping star N fills stars 1…N gold (e.g. tapping star 4 fills stars 1–4)
-- [ ] The bilingual caption appears under the stars (e.g. selecting 5 shows «ممتاز · Excellent»)
-- [ ] After a tap, the widget pauses ~400 ms (stars visibly filled) then moves to the question step
-- [ ] Star order stays left-to-right ascending in **both** Arabic and English modes
-- [ ] The selected stars stay visible (small, read-only) at the top of the question step
-
-**User types & questions** (set `FORCE_USER_TYPE` to each type in turn, or append `?search=x`, `?product=1`, `?compare=1`, `?page=checkout`, `?page=contact`, `?page=orders` to the URL)
-
-- [ ] Each of the **7 user types** shows its own question set
-- [ ] Within each type, **all 5 ratings** show the correct, distinct question — 35 combinations total
-- [ ] `FORCE_USER_TYPE` is back to `null` before going live
-
-**Language & RTL**
-
-- [ ] Widget starts in **Arabic** with full RTL layout: close button top-LEFT, text right-aligned, floating button bottom-LEFT
-- [ ] The **EN** pill switches every visible string instantly and flips the layout to LTR — no reload
-- [ ] Switching language while on the question step swaps the question itself
-
-**Submission**
-
-- [ ] With the form configured (section 1), submit a rating + answer and confirm a new row appears in the linked **Google Sheet** with Language, User Type, Rating, Feedback, and Page URL
-- [ ] Submitting an **empty** answer shows the gentle inline message («من فضلك اكتب إجابتك» / “Please write your answer”) — never a browser alert
-- [ ] The button shows «جاري الإرسال...» / “Sending...” while disabled, then the thank-you screen appears, auto-closes after 2 s, and the widget fully resets
-
-**Mobile**
-
-- [ ] At **320 px** viewport width: all five 56 px stars fit, nothing overflows, every control is comfortably tappable
-
-**Accessibility**
-
-- [ ] Keyboard: Tab order is logical; arrow keys move the star selection; Enter confirms; Escape closes; focus returns to the floating button on close
-- [ ] Focus stays trapped inside the modal while it is open
-- [ ] A screen reader announces the dialog title, the star radio group, and the selected rating caption (live region)
-- [ ] With “reduce motion” enabled in the OS, animations are disabled
-
-**Console**
-
-- [ ] Zero errors or warnings through a full open → rate → answer → submit → close cycle (with the form configured)
+**If you still see the old version:** it's usually a cache. Hard-refresh the page (**Ctrl+Shift+R** on Windows, **Cmd+Shift+R** on Mac). If your hosting/CDN caches files (Method 2), purge/clear its cache or wait a few minutes.
 
 ---
 
-## 5. Troubleshooting
+## G. Troubleshooting
 
-**The widget doesn't appear on the page**
+**The widget button doesn't show up**
 
-- Confirm the whole block — `<link>`, `<style>`, `<div id="mn-feedback-root">`, **and** `<script>` — was pasted (Method A), or that the loader URL is correct and returns the file (Method B; check the browser's Network tab).
-- The script must run **after** the `<div id="mn-feedback-root">` markup exists (it does if you copied the block intact and in order).
-- Check the console for a JavaScript error thrown by *other* scripts on the page before the widget's script runs.
-- If your site sends a strict **Content-Security-Policy**, allow `fonts.googleapis.com` and `fonts.gstatic.com` (styles + fonts); for Method B also allow `connect-src` to the widget's host.
+- Make sure the **entire block** was pasted — from the `WIDGET START` marker to the `WIDGET END` marker. Cutting it short (e.g. missing the `<script>` part at the end) breaks it.
+- Method 2: open the loader's URL (e.g. `https://mynaghi.sa/assets/widget.html`) directly in the browser — if it doesn't load there, fix the upload/URL first.
+- Open the browser console (**F12 → Console**) and look for red errors mentioning `mn-` or the widget URL.
+- If the site has a strict Content-Security-Policy, it must allow `fonts.googleapis.com` and `fonts.gstatic.com`; for Method 2 it must also allow fetching the widget file's URL.
 
-**Feedback isn't arriving in the Google Sheet**
+**The font looks different / didn't load**
 
-- The widget deliberately shows the thank-you screen even when submission fails, so watch the **browser console** for `[MY NAGHI feedback]` warnings.
-- `formId` still says `YOUR_FORM_ID` → submissions are skipped by design; complete section 1.4.
-- Make sure you used the long **`/d/e/` public Form ID** from the Send link, not the edit-page ID.
-- Re-check every `entry.` ID against a fresh **pre-filled link** (section 1.3) — one wrong ID makes Google drop that value; a wrong required-field setup drops the whole row.
-- In the form's settings, confirm no question is **required** and “Limit to 1 response” is **off**.
-- Look in the **linked spreadsheet** (Responses tab → Sheets icon) and in the form's own Responses tab.
-- Note: the request uses `mode: 'no-cors'`, so the browser cannot read Google's response — the Network tab shows an opaque “success” even if Google rejected the row. **The Sheet is the source of truth.**
+- Space Grotesk comes from Google Fonts; if it's blocked or slow the widget falls back to a clean system font and keeps working.
+- Arabic text always uses the device's Arabic system font — Space Grotesk has no Arabic letters. That's normal.
 
-**RTL layout looks wrong**
+**Responses don't arrive in the Google Sheet**
 
-- The widget manages its own direction; make sure it is not inside a container that forces `direction` with `!important`.
-- If the close button isn't top-left in Arabic, the browser may be very old (no `inset-inline-end` support, pre-2021). All current iOS Safari / Android Chrome / desktop browsers are fine.
-- Stars intentionally stay **left-to-right** in Arabic — that is the standard convention in Saudi apps, not a bug.
+- Check the console (**F12 → Console**) for a `[MY NAGHI feedback]` warning — it explains what happened.
+- If `formId` still says `YOUR_FORM_ID`, the widget skips sending on purpose — finish part C.
+- Confirm you used the **long Form ID from the Send link** (the one containing `/d/e/`), not the ID from the editor's address bar.
+- Re-do the **pre-filled link** (C.3) and compare all five `entry.` numbers — one wrong digit sends that value nowhere.
+- In the form: no question may be **Required**, and “Limit to 1 response” must be **OFF**.
+- Look in the **linked spreadsheet** and in the form's **Responses** tab. The browser's Network tab always shows an opaque “success” for Google Forms (that's a technical limitation) — the Sheet is the only real confirmation.
 
-**Font doesn't load / text looks like a system font**
+**The Arabic layout looks wrong (not mirrored / close button on the wrong side)**
 
-- Space Grotesk loads from Google Fonts, so those domains must be reachable (see the CSP note above). If it's blocked or slow, the widget falls back to a clean system font and remains fully usable.
-- Space Grotesk contains **no Arabic glyphs**; Arabic text intentionally renders in the device's Arabic system font. This is expected and correct.
+- The widget must not sit inside a page element that forces a text direction with `!important`.
+- Very old browsers (before 2021) don't support the CSS used for mirroring; all current phones and desktop browsers do.
+- Stars filling left-to-right in Arabic is **intentional** — it's the convention in Saudi apps.
 
-**The widget opens by itself**
+**Something else is broken**
 
-- Check `AUTO_OPEN_AFTER_MS` and `AUTO_OPEN_ON_SCROLL_PERCENT` — both should be `null` unless you enabled them on purpose.
-
-**Styles look broken / inherited from the site**
-
-- Keep the widget's `<style>` block intact — every rule is scoped under `#mn-feedback-root`. If your site applies aggressive global `!important` rules (e.g. on `button`), scope them away from `#mn-feedback-root`.
+- Open the console: **F12** (or **Cmd+Option+I** on Mac) → **Console** tab. Copy the red error text — it usually names the problem — and share it with your developer, or compare your recent edit for a missing quote, comma, or bracket (the most common cause after editing questions).
