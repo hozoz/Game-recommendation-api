@@ -36,7 +36,7 @@ Do this **before** touching the website — you can see and click everything loc
    5. Your browser opens automatically at an address like `http://127.0.0.1:5500/widget.html` — that address also appears in the blue bar at the bottom of VS Code (“Port: 5500”). Keep this tab open; every time you save the file, the preview refreshes by itself.
 
 3. **What to check in the preview:**
-   - Click the floating button → the popup opens on the **reason screen** with 6 options.
+   - Click the floating button → the popup opens on the **reason screen** with 5 options.
    - Pick a reason → the **star screen** appears (your reason shows in a small pill).
    - Tap different stars → the caption under them changes (e.g. «ممتاز · Excellent»).
    - After tapping a star you land on the **note screen** — check that **the question matches the reason and the star** you chose (try a 1-star and a 5-star for the same reason).
@@ -67,6 +67,7 @@ const REASONS = [
 
 - **Reorder:** move a whole line up or down. The tiles follow this order exactly.
 - **Remove:** delete the whole line (including the trailing comma). Its questions in `QUESTIONS` can stay — they're simply unused — or you can delete that block too. **The widget never breaks either way**; if a reason somehow has no questions, a polite generic question is shown instead.
+- **Note:** the *Pricing & financing* reason currently ships **disabled** — its line is still in `REASONS` but starts with `//`. To bring it back, just delete the `//` at the start of that line (its questions are still in `QUESTIONS`, ready to go).
 
 ### Add a new reason
 
@@ -272,8 +273,8 @@ Go through this list on the real website after publishing:
 
 - [ ] The lilac floating button appears (bottom-left, because Arabic is default).
 - [ ] It opens the popup; the page behind is dimmed and blurred.
-- [ ] All **6 reasons** show, in the right order, each with its icon and both languages.
-- [ ] For **each reason**, each of the **5 stars** leads to the right follow-up question — 30 combinations. (Quick spot-check on live + full check in local preview is fine.)
+- [ ] All **5 reasons** show, in the right order, each with its icon and both languages.
+- [ ] For **each reason**, each of the **5 stars** leads to the right follow-up question — 25 combinations. (Quick spot-check on live + full check in local preview is fine.)
 - [ ] Arabic is the default and the layout is right-to-left: close button top-left, text right-aligned; **stars still fill left-to-right** (that's intentional).
 - [ ] The **EN** pill switches every text instantly, including mid-flow.
 - [ ] Pressing **Send with an empty box** works and shows the thank-you.

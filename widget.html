@@ -509,6 +509,72 @@
     color: var(--mn-bluegrey-lt);
   }
 
+  /* ==============================================================
+     MICRO-ANIMATIONS — deliberately subtle: short, composed, and
+     all disabled automatically under prefers-reduced-motion.
+     ============================================================== */
+
+  /* Each step's content fades in with a small rise when it appears */
+  @keyframes mn-step-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  #mn-feedback-root .mn-step:not([hidden]) {
+    animation: mn-step-in 260ms var(--mn-ease);
+  }
+
+  /* Reason tiles cascade in one after another */
+  @keyframes mn-tile-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  #mn-feedback-root .mn-reason {
+    animation: mn-tile-in 280ms var(--mn-ease) backwards;
+  }
+  #mn-feedback-root .mn-reason:nth-child(2) { animation-delay: 45ms; }
+  #mn-feedback-root .mn-reason:nth-child(3) { animation-delay: 90ms; }
+  #mn-feedback-root .mn-reason:nth-child(4) { animation-delay: 135ms; }
+  #mn-feedback-root .mn-reason:nth-child(5) { animation-delay: 180ms; }
+  #mn-feedback-root .mn-reason:nth-child(6) { animation-delay: 225ms; }
+  #mn-feedback-root .mn-reason:nth-child(7) { animation-delay: 270ms; }
+  #mn-feedback-root .mn-reason:nth-child(8) { animation-delay: 315ms; }
+
+  /* Stars pop one-by-one when a rating is confirmed (driven from JS
+     so the hover preview stays quiet) */
+  @keyframes mn-pop {
+    0%   { transform: scale(1); }
+    45%  { transform: scale(1.3); }
+    100% { transform: scale(1); }
+  }
+
+  /* Thank-you: the circle scales in, then the checkmark draws itself */
+  @keyframes mn-check-in {
+    from { opacity: 0; transform: scale(0.5); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  #mn-feedback-root .mn-check { animation: mn-check-in 350ms var(--mn-ease); }
+  #mn-feedback-root .mn-check path {
+    stroke-dasharray: 24;
+    stroke-dashoffset: 24;
+    animation: mn-draw 350ms var(--mn-ease) 200ms forwards;
+  }
+  @keyframes mn-draw { to { stroke-dashoffset: 0; } }
+
+  /* A soft pulse ring on the floating button every few seconds */
+  @keyframes mn-ring {
+    0%   { box-shadow: 0 0 0 0 rgba(150, 75, 250, 0.35); }
+    18%  { box-shadow: 0 0 0 14px rgba(150, 75, 250, 0); }
+    100% { box-shadow: 0 0 0 14px rgba(150, 75, 250, 0); }
+  }
+  #mn-feedback-root .mn-fab::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: mn-ring 7s var(--mn-ease) 2s infinite;
+  }
+
   /* ---------------- Reduced motion ---------------- */
   @media (prefers-reduced-motion: reduce) {
     #mn-feedback-root *,
@@ -516,6 +582,11 @@
     #mn-feedback-root *::after {
       transition: none !important;
       animation: none !important;
+    }
+    /* without the draw animation the checkmark must be visible */
+    #mn-feedback-root .mn-check path {
+      stroke-dasharray: none;
+      stroke-dashoffset: 0;
     }
   }
 </style>
@@ -604,7 +675,7 @@
           <div class="mn-check">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
-              <path d="M20 6 9 17l-5-5"/>
+              <path d="M20 6 9 17l-5-5" pathLength="24"/>
             </svg>
           </div>
           <p class="mn-thanks" role="status"></p>
@@ -659,7 +730,9 @@
     { id: 'browse',   ar: 'أتصفّح فقط',               en: 'Just browsing',         icon: 'eye' },
     { id: 'service',  ar: 'موعد صيانة',               en: 'Service appointment',   icon: 'wrench' },
     { id: 'location', ar: 'البحث عن معرض أو فرع',     en: 'Showroom / location',   icon: 'map-pin' },
-    { id: 'pricing',  ar: 'الأسعار والتمويل',         en: 'Pricing & financing',   icon: 'tag' },
+    // Pricing & financing is currently disabled. To bring it back,
+    // remove the // at the start of the next line:
+    // { id: 'pricing',  ar: 'الأسعار والتمويل',         en: 'Pricing & financing',   icon: 'tag' },
     { id: 'other',    ar: 'سبب آخر',                  en: 'Something else',        icon: 'message-square' }
   ];
 
@@ -995,13 +1068,28 @@
     renderStars();
   }
 
-  // Confirm the rating: show the fill for ~400ms, then go to step 3.
+  // On confirm, the filled stars pop one-by-one (left to right).
+  // Inline animations lose to the reduced-motion !important rules,
+  // so this stays quiet for users who prefer no motion.
+  function popStars(svgs, n, stagger) {
+    svgs.forEach(function (svg, i) {
+      svg.style.animation = 'none';
+      if (i < n) {
+        void svg.offsetWidth;   // reflow so the animation restarts
+        svg.style.animation = 'mn-pop 320ms var(--mn-ease) ' + (i * stagger) + 'ms';
+      }
+    });
+  }
+
+  // Confirm the rating: let the user see the fill (and the pop
+  // finish, ~500ms for five stars), then go to step 3.
   function confirmRating(n) {
     selectRating(n);
+    popStars(starBtns.map(function (b) { return b.querySelector('svg'); }), n, 45);
     advanceTimer = setTimeout(function () {
       advanceTimer = null;
       showStep(3);
-    }, 400);
+    }, 550);
   }
 
   starBtns.forEach(function (btn) {
@@ -1069,6 +1157,7 @@
       miniStars.forEach(function (svg, i) {
         svg.classList.toggle('mn-on', i < rating);
       });
+      popStars(miniStars, rating, 40);
       textarea.focus();
     }
   }
