@@ -163,23 +163,28 @@ Pick whichever fits how mynaghi.sa is built. **Method A** is the recommended def
 
 ### Method A: Direct Script Embed (recommended)
 
-Copy the entire contents of the `<script> … </script>` block from `widget.html`
-(everything inside the IIFE) and paste it just before the closing `</body>` tag of your
-site template. Also add the font link in `<head>`:
+Use the ready-made single-file build **`mynaghi-feedback-widget.js`**. It bundles the
+styles, the font loader, and the widget into one file, so there is exactly **one line**
+to add. Upload the file somewhere on the site (e.g. `/assets/feedback/`) and add this
+just before the closing `</body>` tag of the site template:
 
 ```html
-<!-- in <head> -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-<!-- the <style> block from widget.html goes in <head> too -->
-
-<!-- just before </body> -->
-<script> /* …paste the widget IIFE here… */ </script>
+<script src="/assets/feedback/mynaghi-feedback-widget.js" defer></script>
 ```
 
-The widget injects its own DOM and floating button. No further markup needed. It works
-immediately, no server changes.
+That's the whole integration. The script injects its own styles, font, DOM, and floating
+button — no other markup, no `<head>` changes, no server logic. It works immediately.
+
+**No place to host the file?** You can instead paste the *entire contents* of
+`mynaghi-feedback-widget.js` inline, wrapped in a script tag, in the same spot:
+
+```html
+<script> /* …paste the full contents of mynaghi-feedback-widget.js here… */ </script>
+```
+
+> `mynaghi-feedback-widget.js` is generated from `widget.html` and already contains the
+> live Google Form configuration. If you edit `widget.html` later, regenerate this file so
+> the two stay in sync.
 
 ### Method B: iframe Embed
 
@@ -224,6 +229,63 @@ Best for performance and caching across many pages.
 
 Load time impact is negligible (< 100 ms) and the font uses `display=swap` so text never
 blocks paint.
+
+---
+
+## 3A. How the Widget Appears (Trigger Options)
+
+**By default, the widget is a floating 💬 button in the bottom-right corner. Nothing pops
+up on its own** — the customer chooses to open it by tapping the button. This is the
+least intrusive behaviour and the recommended default.
+
+If you'd rather have it **open automatically after a specific action or moment**, the
+widget exposes `MYNAGHI_FEEDBACK.open()` — call it from any event. Here are common
+patterns (place these after the widget script has loaded):
+
+**Open on the order-confirmation / thank-you page** (great for Buyers feedback):
+
+```html
+<script defer>
+  window.addEventListener('load', function () {
+    if (location.pathname.indexOf('/order-confirmation') !== -1) {
+      window.MYNAGHI_FEEDBACK.open();
+    }
+  });
+</script>
+```
+
+**Open after the customer has spent ~30 seconds on the page:**
+
+```html
+<script defer>
+  setTimeout(function () { window.MYNAGHI_FEEDBACK.open(); }, 30000);
+</script>
+```
+
+**Open on "exit intent"** (when the mouse leaves toward the top of the window — desktop):
+
+```html
+<script defer>
+  document.addEventListener('mouseleave', function (e) {
+    if (e.clientY <= 0) window.MYNAGHI_FEEDBACK.open();
+  });
+</script>
+```
+
+**Only auto-open once per visitor** (so it isn't annoying) — wrap any trigger above:
+
+```html
+<script defer>
+  if (!localStorage.getItem('mn_feedback_shown')) {
+    localStorage.setItem('mn_feedback_shown', '1');
+    setTimeout(function () { window.MYNAGHI_FEEDBACK.open(); }, 30000);
+  }
+</script>
+```
+
+You can mix these freely (e.g. keep the floating button **and** auto-open once on the
+order-confirmation page). The floating button always remains available unless you hide it
+with CSS.
 
 ---
 
