@@ -147,7 +147,9 @@ This connects the widget to a Google Sheet where all responses arrive. You only 
    | 5 | Page URL | Short answer |
 
 3. Leave **every question optional** — do NOT toggle “Required” on any of them. (The note is optional in the widget; a required field that arrives empty makes Google silently reject the entire response.) Google records the **timestamp automatically** — you don't need a field for it.
-4. In **Settings (⚙️)**: make sure **“Limit to 1 response” is OFF** (otherwise customers would be forced to sign in to Google).
+4. In **Settings (⚙️) → Responses**, two switches MUST be off, otherwise Google silently rejects everything the widget sends:
+   - **“Collect email addresses” → “Do not collect”** (if set to Verified or Responder input, submissions without a signed-in Google user are dropped).
+   - **“Limit to 1 response” → OFF** (it forces customers to sign in to Google).
 5. Click the **Responses** tab → the green **Sheets icon** → **Create spreadsheet**. This Sheet is where feedback lands.
 
 ### C.2 Get the Form ID
@@ -320,7 +322,7 @@ To change a question, a reason, a color, or any text **after** the widget is liv
 - If `formId` still says `YOUR_FORM_ID`, the widget skips sending on purpose — finish part C.
 - Confirm you used the **long Form ID from the Send link** (the one containing `/d/e/`), not the ID from the editor's address bar.
 - Re-do the **pre-filled link** (C.3) and compare all five `entry.` numbers — one wrong digit sends that value nowhere.
-- In the form: no question may be **Required**, and “Limit to 1 response” must be **OFF**.
+- In the form: no question may be **Required**, “Limit to 1 response” must be **OFF**, and **“Collect email addresses” must be “Do not collect”** — any of these three silently blocks widget submissions.
 - Look in the **linked spreadsheet** and in the form's **Responses** tab. The browser's Network tab always shows an opaque “success” for Google Forms (that's a technical limitation) — the Sheet is the only real confirmation.
 
 **The Arabic layout looks wrong (not mirrored / close button on the wrong side)**
