@@ -38,7 +38,7 @@ Do this **before** touching the website — you can see and click everything loc
 3. **What to check in the preview:**
    - Click the floating button → the popup opens on the **reason screen** with 5 options.
    - Pick a reason → the **star screen** appears (your reason shows in a small pill).
-   - Tap different stars → the caption under them changes (e.g. «ممتاز · Excellent»).
+   - Tap different stars → the caption under them changes (e.g. «ممتاز» / “Excellent”).
    - After tapping a star you land on the **note screen** — check that **the question matches the reason and the star** you chose (try a 1-star and a 5-star for the same reason).
    - Switch **العربية / EN** at the top — every text should change instantly, and the layout should flip direction.
    - Press **إرسال · Send** with the box **empty** — this is allowed; you should see the thank-you screen, and the popup closes by itself after 2 seconds.
@@ -104,9 +104,11 @@ Search for `COLORS & DESIGN TOKENS` at the top of the `<style>` block:
 
 ```css
 --mn-lilac:        #964BFA;   /* primary — active states, CTAs  */
+--mn-orange:       #F97316;   /* send button                    */
+--mn-orange-dark:  #EA580C;   /* send button hover              */
 ```
 
-Change any hex value (e.g. the lilac line above) and the whole widget re-themes.
+Change any hex value (e.g. the lilac or orange lines above) and the whole widget re-themes. The active language pill and the feedback text frame use `--mn-black`.
 
 ### Turn the reason pill on/off
 
