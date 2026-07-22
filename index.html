@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PartsLeb — Car Parts Marketplace in Lebanon | قطع سيارات لبنان</title>
+<meta name="description" content="Buy and sell new and used car parts across Lebanon. Engine, brakes, suspension, body parts and more — Beirut, Tripoli, Saida, Zahle, Bourj Hammoud.">
+<style>
+  :root {
+    --navy: #101828;
+    --navy-2: #1a2440;
+    --amber: #f5a623;
+    --amber-dark: #d98f0f;
+    --bg: #f4f6fa;
+    --card: #ffffff;
+    --text: #1d2433;
+    --muted: #66707f;
+    --line: #e3e8f0;
+    --green: #1fa855;
+    --blue: #2f6fed;
+    --red: #d93838;
+    --radius: 10px;
+    --shadow: 0 2px 10px rgba(16, 24, 40, 0.08);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+  img { max-width: 100%; display: block; }
+  a { color: inherit; text-decoration: none; }
+  button { font-family: inherit; cursor: pointer; }
+
+  /* ---------- Header ---------- */
+  header {
+    background: var(--navy);
+    color: #fff;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  }
+  .header-inner {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+  .logo .gear { font-size: 26px; }
+  .logo span.leb { color: var(--amber); }
+  .logo small {
+    display: block;
+    font-size: 11px;
+    font-weight: 400;
+    color: #aeb7c8;
+    letter-spacing: 0;
+  }
+  .header-search {
+    flex: 1;
+    min-width: 220px;
+    display: flex;
+  }
+  .header-search input {
+    flex: 1;
+    border: none;
+    border-radius: var(--radius) 0 0 var(--radius);
+    padding: 10px 14px;
+    font-size: 15px;
+    outline: none;
+  }
+  .header-search button {
+    background: var(--amber);
+    color: var(--navy);
+    border: none;
+    font-weight: 700;
+    font-size: 15px;
+    padding: 10px 18px;
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+  .header-search button:hover { background: var(--amber-dark); }
+  .header-actions { display: flex; gap: 10px; }
+  .btn-sell {
+    background: var(--amber);
+    color: var(--navy);
+    border: none;
+    font-weight: 700;
+    font-size: 15px;
+    padding: 10px 18px;
+    border-radius: var(--radius);
+    white-space: nowrap;
+  }
+  .btn-sell:hover { background: var(--amber-dark); }
+  .btn-wa-header {
+    background: transparent;
+    color: #fff;
+    border: 1px solid #3b465e;
+    font-size: 15px;
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    white-space: nowrap;
+  }
+  .btn-wa-header:hover { border-color: var(--amber); color: var(--amber); }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-2) 60%, #23325c 100%);
+    color: #fff;
+    padding: 48px 20px 56px;
+    text-align: center;
+  }
+  .hero h1 { font-size: clamp(26px, 4.5vw, 40px); font-weight: 800; }
+  .hero h1 em { color: var(--amber); font-style: normal; }
+  .hero .ar {
+    font-size: clamp(16px, 2.5vw, 20px);
+    color: #c3cbdb;
+    margin-top: 6px;
+    direction: rtl;
+  }
+  .hero p.sub { color: #aeb7c8; margin-top: 10px; font-size: 16px; }
+
+  /* ---------- Filter bar ---------- */
+  .filter-bar {
+    max-width: 1180px;
+    margin: -28px auto 0;
+    padding: 0 20px;
+    position: relative;
+    z-index: 5;
+  }
+  .filter-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr) auto;
+    gap: 12px;
+    align-items: end;
+  }
+  .filter-card label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    display: block;
+    margin-bottom: 4px;
+  }
+  .filter-card select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font-size: 15px;
+    background: #fff;
+    color: var(--text);
+    outline: none;
+  }
+  .filter-card select:focus { border-color: var(--amber); }
+  .btn-reset {
+    background: var(--navy);
+    color: #fff;
+    border: none;
+    padding: 11px 18px;
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .btn-reset:hover { background: var(--navy-2); }
+
+  /* ---------- Layout ---------- */
+  main { max-width: 1180px; margin: 0 auto; padding: 34px 20px 60px; }
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .section-head h2 { font-size: 22px; font-weight: 800; }
+  .section-head .count { color: var(--muted); font-size: 14px; }
+
+  /* ---------- Categories ---------- */
+  .cats {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+  .cat {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px 10px;
+    text-align: center;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .cat:hover { border-color: var(--amber); transform: translateY(-2px); }
+  .cat.active { border-color: var(--amber); background: #fff8ec; }
+  .cat .ico { font-size: 28px; margin-bottom: 6px; }
+  .cat .name { font-size: 13.5px; font-weight: 700; }
+  .cat .cnt { font-size: 12px; color: var(--muted); }
+
+  /* ---------- Listings grid ---------- */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 18px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 0.15s, transform 0.15s;
+    cursor: pointer;
+  }
+  .card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
+  .card .thumb {
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 54px;
+    background: linear-gradient(135deg, #eef1f7, #e2e8f2);
+    position: relative;
+  }
+  .badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 999px;
+    color: #fff;
+  }
+  .badge.new { background: var(--green); }
+  .badge.used { background: var(--blue); }
+  .badge.refurb { background: #8a4fd3; }
+  .card .body { padding: 13px 14px 14px; flex: 1; display: flex; flex-direction: column; }
+  .card h3 { font-size: 15.5px; font-weight: 700; line-height: 1.3; }
+  .card .fits { font-size: 13px; color: var(--muted); margin-top: 3px; }
+  .card .meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 12px;
+  }
+  .card .price { font-size: 18px; font-weight: 800; color: var(--navy); }
+  .card .city { font-size: 12.5px; color: var(--muted); }
+  .empty {
+    text-align: center;
+    color: var(--muted);
+    padding: 60px 20px;
+    font-size: 16px;
+  }
+  .empty .big { font-size: 42px; margin-bottom: 10px; }
+
+  /* ---------- How it works ---------- */
+  .how {
+    margin-top: 52px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 16px;
+  }
+  .how .step {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 22px 18px;
+  }
+  .how .num {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: var(--amber);
+    color: var(--navy);
+    font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 12px;
+  }
+  .how h3 { font-size: 16px; margin-bottom: 6px; }
+  .how p { font-size: 14px; color: var(--muted); }
+
+  /* ---------- Modal ---------- */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(16, 24, 40, 0.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 100;
+  }
+  .overlay.open { display: flex; }
+  .modal {
+    background: #fff;
+    border-radius: var(--radius);
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 24px;
+    position: relative;
+  }
+  .modal .close {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    background: none;
+    border: none;
+    font-size: 22px;
+    color: var(--muted);
+    line-height: 1;
+  }
+  .modal .close:hover { color: var(--text); }
+  .modal h2 { font-size: 20px; margin-bottom: 4px; padding-right: 26px; }
+  .modal .thumb-lg {
+    height: 170px;
+    border-radius: var(--radius);
+    background: linear-gradient(135deg, #eef1f7, #e2e8f2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 64px;
+    margin: 14px 0;
+  }
+  .detail-rows { border-top: 1px solid var(--line); margin-top: 8px; }
+  .detail-rows .row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 14.5px;
+  }
+  .detail-rows .row span:first-child { color: var(--muted); }
+  .detail-rows .row span:last-child { font-weight: 600; text-align: right; }
+  .modal .desc { font-size: 14.5px; color: var(--text); margin-top: 12px; }
+  .price-lg { font-size: 26px; font-weight: 800; color: var(--navy); margin-top: 12px; }
+  .btn-wa {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    background: #25d366;
+    color: #fff;
+    border: none;
+    font-size: 16px;
+    font-weight: 700;
+    padding: 13px;
+    border-radius: var(--radius);
+    margin-top: 16px;
+  }
+  .btn-wa:hover { background: #1fb457; }
+  .btn-call {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    background: var(--navy);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 12px;
+    border-radius: var(--radius);
+    margin-top: 10px;
+  }
+  .btn-call:hover { background: var(--navy-2); }
+
+  /* ---------- Sell form ---------- */
+  .form-grid { display: grid; gap: 12px; margin-top: 16px; }
+  .form-grid .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-grid label { font-size: 13px; font-weight: 700; display: block; margin-bottom: 4px; }
+  .form-grid input, .form-grid select, .form-grid textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+    background: #fff;
+    color: var(--text);
+  }
+  .form-grid input:focus, .form-grid select:focus, .form-grid textarea:focus { border-color: var(--amber); }
+  .form-grid textarea { resize: vertical; min-height: 70px; }
+  .form-note { font-size: 13px; color: var(--muted); margin-top: 10px; }
+
+  /* ---------- Footer ---------- */
+  footer {
+    background: var(--navy);
+    color: #aeb7c8;
+    margin-top: 60px;
+    padding: 36px 20px;
+  }
+  .footer-inner {
+    max-width: 1180px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 30px;
+  }
+  footer h4 { color: #fff; font-size: 15px; margin-bottom: 10px; }
+  footer p, footer li { font-size: 14px; }
+  footer ul { list-style: none; }
+  footer li { margin-bottom: 6px; }
+  footer a:hover { color: var(--amber); }
+  .footer-bottom {
+    max-width: 1180px;
+    margin: 26px auto 0;
+    padding-top: 18px;
+    border-top: 1px solid #2a3550;
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 900px) {
+    .filter-card { grid-template-columns: 1fr 1fr; }
+    .btn-reset { grid-column: span 2; }
+    .footer-inner { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 560px) {
+    .header-inner { gap: 10px; }
+    .header-search { order: 3; width: 100%; }
+    .filter-card { grid-template-columns: 1fr; }
+    .btn-reset { grid-column: span 1; }
+    .form-grid .two { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a href="#" class="logo" onclick="resetAll(); return false;">
+      <span class="gear">⚙️</span>
+      <span>Parts<span class="leb">Leb</span><small>قطع سيارات لبنان</small></span>
+    </a>
+    <div class="header-search">
+      <input type="text" id="searchInput" placeholder="Search parts, e.g. brake pads, alternator, bumper…" oninput="applyFilters()">
+      <button onclick="applyFilters()">Search</button>
+    </div>
+    <div class="header-actions">
+      <a class="btn-wa-header" id="headerWa" href="#" target="_blank" rel="noopener">📞 Contact</a>
+      <button class="btn-sell" onclick="openSell()">+ Sell a Part</button>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <h1>Find any car part, <em>anywhere in Lebanon</em></h1>
+  <div class="ar">بيع وشراء قطع السيارات الجديدة والمستعملة في كل لبنان</div>
+  <p class="sub">New, used &amp; refurbished parts — from Bourj Hammoud to Tripoli. Deal directly with sellers on WhatsApp.</p>
+</section>
+
+<div class="filter-bar">
+  <div class="filter-card">
+    <div>
+      <label for="filterMake">Car Make</label>
+      <select id="filterMake" onchange="applyFilters()"><option value="">All Makes</option></select>
+    </div>
+    <div>
+      <label for="filterCategory">Category</label>
+      <select id="filterCategory" onchange="applyFilters()"><option value="">All Categories</option></select>
+    </div>
+    <div>
+      <label for="filterCondition">Condition</label>
+      <select id="filterCondition" onchange="applyFilters()">
+        <option value="">Any Condition</option>
+        <option value="New">New</option>
+        <option value="Used">Used</option>
+        <option value="Refurbished">Refurbished</option>
+      </select>
+    </div>
+    <div>
+      <label for="filterCity">City</label>
+      <select id="filterCity" onchange="applyFilters()"><option value="">All Lebanon</option></select>
+    </div>
+    <button class="btn-reset" onclick="resetAll()">Reset</button>
+  </div>
+</div>
+
+<main>
+  <div class="section-head">
+    <h2>Browse by Category</h2>
+  </div>
+  <div class="cats" id="catsGrid"></div>
+
+  <div class="section-head">
+    <h2>Available Parts</h2>
+    <span class="count" id="resultCount"></span>
+  </div>
+  <div class="grid" id="listingsGrid"></div>
+  <div class="empty" id="emptyState" style="display:none;">
+    <div class="big">🔍</div>
+    No parts match your search.<br>
+    Try removing some filters, or <a href="#" onclick="openSell(); return false;" style="color:var(--blue); font-weight:600;">post a request</a> — sellers will reach out.
+  </div>
+
+  <div class="how">
+    <div class="step">
+      <div class="num">1</div>
+      <h3>Search the part you need</h3>
+      <p>Filter by car make, category, condition and city to find the exact part.</p>
+    </div>
+    <div class="step">
+      <div class="num">2</div>
+      <h3>Contact the seller directly</h3>
+      <p>Every listing has a WhatsApp button — negotiate price and delivery directly, no middleman.</p>
+    </div>
+    <div class="step">
+      <div class="num">3</div>
+      <h3>Sell your own parts</h3>
+      <p>Have parts to sell? Tap "Sell a Part", fill the form, and your listing request is sent instantly.</p>
+    </div>
+  </div>
+</main>
+
+<!-- Part detail modal -->
+<div class="overlay" id="detailOverlay" onclick="if(event.target===this) closeDetail()">
+  <div class="modal" role="dialog" aria-modal="true">
+    <button class="close" onclick="closeDetail()" aria-label="Close">✕</button>
+    <h2 id="dTitle"></h2>
+    <div class="thumb-lg" id="dIcon"></div>
+    <div class="detail-rows">
+      <div class="row"><span>Fits</span><span id="dFits"></span></div>
+      <div class="row"><span>Category</span><span id="dCat"></span></div>
+      <div class="row"><span>Condition</span><span id="dCond"></span></div>
+      <div class="row"><span>City</span><span id="dCity"></span></div>
+      <div class="row"><span>Seller</span><span id="dSeller"></span></div>
+    </div>
+    <p class="desc" id="dDesc"></p>
+    <div class="price-lg" id="dPrice"></div>
+    <a class="btn-wa" id="dWa" href="#" target="_blank" rel="noopener">💬 WhatsApp the Seller</a>
+    <a class="btn-call" id="dCall" href="#">📞 Call Seller</a>
+  </div>
+</div>
+
+<!-- Sell part modal -->
+<div class="overlay" id="sellOverlay" onclick="if(event.target===this) closeSell()">
+  <div class="modal" role="dialog" aria-modal="true">
+    <button class="close" onclick="closeSell()" aria-label="Close">✕</button>
+    <h2>Sell a Part</h2>
+    <p style="font-size:14px; color:var(--muted); margin-top:4px;">Fill in the details — they'll be sent to us on WhatsApp and we'll publish your listing.</p>
+    <form class="form-grid" id="sellForm" onsubmit="submitSell(event)">
+      <div>
+        <label for="sName">Part name *</label>
+        <input id="sName" required placeholder="e.g. Front brake pads">
+      </div>
+      <div class="two">
+        <div>
+          <label for="sMake">Car make *</label>
+          <input id="sMake" required placeholder="e.g. Toyota" list="makesList">
+          <datalist id="makesList"></datalist>
+        </div>
+        <div>
+          <label for="sModel">Model &amp; year</label>
+          <input id="sModel" placeholder="e.g. Corolla 2015–2019">
+        </div>
+      </div>
+      <div class="two">
+        <div>
+          <label for="sCondition">Condition *</label>
+          <select id="sCondition" required>
+            <option value="New">New</option>
+            <option value="Used">Used</option>
+            <option value="Refurbished">Refurbished</option>
+          </select>
+        </div>
+        <div>
+          <label for="sPrice">Price (USD) *</label>
+          <input id="sPrice" type="number" min="1" required placeholder="e.g. 45">
+        </div>
+      </div>
+      <div class="two">
+        <div>
+          <label for="sCity">City *</label>
+          <select id="sCity" required></select>
+        </div>
+        <div>
+          <label for="sPhone">Your phone *</label>
+          <input id="sPhone" required placeholder="e.g. 70 123 456">
+        </div>
+      </div>
+      <div>
+        <label for="sDesc">Description</label>
+        <textarea id="sDesc" placeholder="Part number, mileage, anything the buyer should know…"></textarea>
+      </div>
+      <button type="submit" class="btn-wa" style="margin-top:4px;">📤 Send Listing via WhatsApp</button>
+      <p class="form-note">Photos? Attach them in the WhatsApp chat after sending. Listings are usually published within a few hours.</p>
+    </form>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <h4>⚙️ PartsLeb</h4>
+      <p>Lebanon's marketplace for new and used car parts. We connect buyers with trusted sellers across the country — deal directly, pay nothing extra.</p>
+    </div>
+    <div>
+      <h4>Quick Links</h4>
+      <ul>
+        <li><a href="#" onclick="resetAll(); return false;">Browse all parts</a></li>
+        <li><a href="#" onclick="openSell(); return false;">Sell a part</a></li>
+        <li><a href="#" id="footerWa" target="_blank" rel="noopener">WhatsApp us</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Coverage</h4>
+      <ul id="footerCities"></ul>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© 2026 PartsLeb — All rights reserved</span>
+    <span>Made in Lebanon 🇱🇧</span>
+  </div>
+</footer>
+
+<script>
+/* =====================================================================
+   CONFIGURATION — edit this section to make the site yours
+   ===================================================================== */
+const CONFIG = {
+  // Your WhatsApp number in international format, digits only (961 = Lebanon).
+  // Example: "96170123456" for 70 123 456.
+  whatsappNumber: "96170123456",
+  currency: "$",
+};
+
+const CITIES = ["Beirut", "Bourj Hammoud", "Jounieh", "Tripoli", "Saida", "Zahle", "Tyre", "Byblos"];
+
+const CATEGORIES = [
+  { name: "Engine",      icon: "🔧" },
+  { name: "Brakes",      icon: "🛑" },
+  { name: "Suspension",  icon: "🪛" },
+  { name: "Electrical",  icon: "🔋" },
+  { name: "Body Parts",  icon: "🚗" },
+  { name: "Interior",    icon: "💺" },
+  { name: "Tires & Rims",icon: "🛞" },
+  { name: "Accessories", icon: "🧰" },
+];
+
+/* =====================================================================
+   LISTINGS — add, edit or remove parts here.
+   condition: "New" | "Used" | "Refurbished"
+   phone: seller's number, international format digits only (961…)
+   ===================================================================== */
+const LISTINGS = [
+  {
+    id: 1, name: "Front Brake Pads (Bosch)", make: "Toyota", model: "Corolla 2014–2019",
+    category: "Brakes", condition: "New", price: 45, city: "Beirut",
+    seller: "Abou Ali Auto Parts", phone: "96170123456", icon: "🛑",
+    desc: "Original Bosch ceramic front brake pads, sealed box. Fits Corolla 2014–2019 all trims."
+  },
+  {
+    id: 2, name: "Alternator 12V 90A", make: "Nissan", model: "Sunny 2012–2018",
+    category: "Electrical", condition: "Refurbished", price: 85, city: "Bourj Hammoud",
+    seller: "Garo Electric", phone: "96170123456", icon: "🔋",
+    desc: "Professionally refurbished alternator with new bearings and brushes. 3-month warranty. Tested on the bench."
+  },
+  {
+    id: 3, name: "Complete Engine 1.6L (G4FC)", make: "Hyundai", model: "Elantra 2011–2015",
+    category: "Engine", condition: "Used", price: 950, city: "Tripoli",
+    seller: "North Motors", phone: "96170123456", icon: "🔧",
+    desc: "Imported low-mileage engine (~60,000 km), compression tested. Can arrange delivery anywhere in Lebanon."
+  },
+  {
+    id: 4, name: "Front Bumper (Unpainted)", make: "Kia", model: "Picanto 2017–2020",
+    category: "Body Parts", condition: "New", price: 110, city: "Saida",
+    seller: "South Body Shop", phone: "96170123456", icon: "🚗",
+    desc: "Brand new aftermarket front bumper, primer finish ready for paint. Includes fog light housings."
+  },
+  {
+    id: 5, name: "Shock Absorbers (Pair, Rear)", make: "Mercedes-Benz", model: "C-Class W204 2008–2014",
+    category: "Suspension", condition: "New", price: 160, city: "Jounieh",
+    seller: "Star Parts Lebanon", phone: "96170123456", icon: "🪛",
+    desc: "Genuine Bilstein B4 rear shock absorbers, pair. Sealed boxes with invoice."
+  },
+  {
+    id: 6, name: "Headlight Assembly, Right (LED)", make: "BMW", model: "320i F30 2012–2018",
+    category: "Electrical", condition: "Used", price: 320, city: "Beirut",
+    seller: "Bavaria Used Parts", phone: "96170123456", icon: "💡",
+    desc: "Original LED headlight in excellent condition, no cracks or moisture. Removed from a low-mileage import."
+  },
+  {
+    id: 7, name: "Radiator + Fan Assembly", make: "Toyota", model: "Camry 2012–2017",
+    category: "Engine", condition: "Used", price: 95, city: "Zahle",
+    seller: "Bekaa Auto", phone: "96170123456", icon: "🌡️",
+    desc: "Clean radiator with both fans, pressure tested, no leaks. Pickup from Zahle or delivery for a small fee."
+  },
+  {
+    id: 8, name: "Set of 4 Rims 16\" (Original)", make: "Honda", model: "Civic 2016–2021",
+    category: "Tires & Rims", condition: "Used", price: 280, city: "Tyre",
+    seller: "Wheels South", phone: "96170123456", icon: "🛞",
+    desc: "Original Honda alloy rims 16 inch, straight, no welding. Tires not included."
+  },
+  {
+    id: 9, name: "Leather Seat Set (Front + Rear)", make: "Range Rover", model: "Sport 2014–2017",
+    category: "Interior", condition: "Used", price: 750, city: "Beirut",
+    seller: "Luxury Interiors LB", phone: "96170123456", icon: "💺",
+    desc: "Full black leather seat set in very good condition, with rails and airbags. Heating works."
+  },
+  {
+    id: 10, name: "Timing Belt Kit + Water Pump", make: "Renault", model: "Megane 2010–2015",
+    category: "Engine", condition: "New", price: 120, city: "Jounieh",
+    seller: "Franco Parts", phone: "96170123456", icon: "⚙️",
+    desc: "Complete Gates timing kit with water pump, belt and tensioners. Original packaging."
+  },
+  {
+    id: 11, name: "Side Mirror, Left (Electric)", make: "Nissan", model: "Qashqai 2014–2020",
+    category: "Body Parts", condition: "New", price: 55, city: "Tripoli",
+    seller: "North Motors", phone: "96170123456", icon: "🪞",
+    desc: "New aftermarket electric side mirror with indicator, black cover. Plug and play."
+  },
+  {
+    id: 12, name: "Car Battery 70Ah (NS70)", make: "Universal", model: "Fits most sedans & SUVs",
+    category: "Electrical", condition: "New", price: 90, city: "Beirut",
+    seller: "PowerCell Lebanon", phone: "96170123456", icon: "🔋",
+    desc: "New maintenance-free battery, 1-year warranty. Free installation in Beirut area."
+  },
+  {
+    id: 13, name: "Roof Rack Cross Bars", make: "Universal", model: "Adjustable 110–130 cm",
+    category: "Accessories", condition: "New", price: 40, city: "Byblos",
+    seller: "Jbeil Auto Shop", phone: "96170123456", icon: "🧰",
+    desc: "Universal lockable aluminum cross bars, fits raised rails. Load up to 75 kg."
+  },
+  {
+    id: 14, name: "Front Lower Control Arms (Pair)", make: "Kia", model: "Sportage 2016–2021",
+    category: "Suspension", condition: "New", price: 130, city: "Saida",
+    seller: "South Body Shop", phone: "96170123456", icon: "🪛",
+    desc: "New CTR control arms with bushings and ball joints, left and right."
+  },
+  {
+    id: 15, name: "Gearbox Automatic (U660E)", make: "Toyota", model: "Avalon / Camry 3.5L",
+    category: "Engine", condition: "Used", price: 700, city: "Bourj Hammoud",
+    seller: "Garo Transmission", phone: "96170123456", icon: "🔩",
+    desc: "Imported used automatic transmission, shifts perfectly. 1-month test warranty."
+  },
+  {
+    id: 16, name: "Dash Camera Full HD", make: "Universal", model: "All cars",
+    category: "Accessories", condition: "New", price: 35, city: "Beirut",
+    seller: "PowerCell Lebanon", phone: "96170123456", icon: "📷",
+    desc: "1080p dash cam with night vision, parking mode and 32GB card included."
+  },
+];
+
+/* ===================================================================== */
+
+let activeCategory = "";
+
+function fmtPrice(p) { return CONFIG.currency + p.toLocaleString("en-US"); }
+
+function condClass(c) {
+  return c === "New" ? "new" : c === "Used" ? "used" : "refurb";
+}
+
+function waLink(number, text) {
+  return "https://wa.me/" + number + "?text=" + encodeURIComponent(text);
+}
+
+function populateFilters() {
+  const makes = [...new Set(LISTINGS.map(l => l.make))].sort();
+  const makeSel = document.getElementById("filterMake");
+  const makesList = document.getElementById("makesList");
+  makes.forEach(m => {
+    makeSel.insertAdjacentHTML("beforeend", `<option>${m}</option>`);
+    makesList.insertAdjacentHTML("beforeend", `<option value="${m}">`);
+  });
+
+  const catSel = document.getElementById("filterCategory");
+  CATEGORIES.forEach(c => catSel.insertAdjacentHTML("beforeend", `<option>${c.name}</option>`));
+
+  const citySel = document.getElementById("filterCity");
+  const sCitySel = document.getElementById("sCity");
+  const footerCities = document.getElementById("footerCities");
+  CITIES.forEach(c => {
+    citySel.insertAdjacentHTML("beforeend", `<option>${c}</option>`);
+    sCitySel.insertAdjacentHTML("beforeend", `<option>${c}</option>`);
+    footerCities.insertAdjacentHTML("beforeend", `<li>${c}</li>`);
+  });
+}
+
+function renderCategories() {
+  const grid = document.getElementById("catsGrid");
+  grid.innerHTML = CATEGORIES.map(c => {
+    const count = LISTINGS.filter(l => l.category === c.name).length;
+    const active = activeCategory === c.name ? " active" : "";
+    return `<div class="cat${active}" onclick="toggleCategory('${c.name}')">
+      <div class="ico">${c.icon}</div>
+      <div class="name">${c.name}</div>
+      <div class="cnt">${count} part${count === 1 ? "" : "s"}</div>
+    </div>`;
+  }).join("");
+}
+
+function toggleCategory(name) {
+  activeCategory = activeCategory === name ? "" : name;
+  document.getElementById("filterCategory").value = activeCategory;
+  renderCategories();
+  applyFilters();
+}
+
+function applyFilters() {
+  const q = document.getElementById("searchInput").value.trim().toLowerCase();
+  const make = document.getElementById("filterMake").value;
+  const cat = document.getElementById("filterCategory").value;
+  const cond = document.getElementById("filterCondition").value;
+  const city = document.getElementById("filterCity").value;
+
+  if (cat !== activeCategory) { activeCategory = cat; renderCategories(); }
+
+  const results = LISTINGS.filter(l => {
+    if (make && l.make !== make) return false;
+    if (cat && l.category !== cat) return false;
+    if (cond && l.condition !== cond) return false;
+    if (city && l.city !== city) return false;
+    if (q) {
+      const hay = (l.name + " " + l.make + " " + l.model + " " + l.category + " " + l.desc).toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  renderListings(results);
+}
+
+function renderListings(list) {
+  const grid = document.getElementById("listingsGrid");
+  const empty = document.getElementById("emptyState");
+  document.getElementById("resultCount").textContent =
+    list.length + " part" + (list.length === 1 ? "" : "s") + " found";
+
+  if (!list.length) {
+    grid.innerHTML = "";
+    empty.style.display = "block";
+    return;
+  }
+  empty.style.display = "none";
+  grid.innerHTML = list.map(l => `
+    <div class="card" onclick="openDetail(${l.id})">
+      <div class="thumb">
+        <span class="badge ${condClass(l.condition)}">${l.condition}</span>
+        ${l.icon}
+      </div>
+      <div class="body">
+        <h3>${l.name}</h3>
+        <div class="fits">${l.make} · ${l.model}</div>
+        <div class="meta">
+          <span class="price">${fmtPrice(l.price)}</span>
+          <span class="city">📍 ${l.city}</span>
+        </div>
+      </div>
+    </div>`).join("");
+}
+
+/* ---------- Detail modal ---------- */
+function openDetail(id) {
+  const l = LISTINGS.find(x => x.id === id);
+  if (!l) return;
+  document.getElementById("dTitle").textContent = l.name;
+  document.getElementById("dIcon").textContent = l.icon;
+  document.getElementById("dFits").textContent = l.make + " — " + l.model;
+  document.getElementById("dCat").textContent = l.category;
+  document.getElementById("dCond").textContent = l.condition;
+  document.getElementById("dCity").textContent = l.city;
+  document.getElementById("dSeller").textContent = l.seller;
+  document.getElementById("dDesc").textContent = l.desc;
+  document.getElementById("dPrice").textContent = fmtPrice(l.price);
+
+  const msg = `Hello! I'm interested in your listing on PartsLeb:\n\n` +
+    `🔧 ${l.name}\n🚗 ${l.make} ${l.model}\n💵 ${fmtPrice(l.price)}\n📍 ${l.city}\n\nIs it still available?`;
+  document.getElementById("dWa").href = waLink(l.phone, msg);
+  document.getElementById("dCall").href = "tel:+" + l.phone;
+
+  document.getElementById("detailOverlay").classList.add("open");
+}
+function closeDetail() { document.getElementById("detailOverlay").classList.remove("open"); }
+
+/* ---------- Sell modal ---------- */
+function openSell() { document.getElementById("sellOverlay").classList.add("open"); }
+function closeSell() { document.getElementById("sellOverlay").classList.remove("open"); }
+
+function submitSell(e) {
+  e.preventDefault();
+  const v = id => document.getElementById(id).value.trim();
+  const msg =
+    `🆕 New listing request — PartsLeb\n\n` +
+    `🔧 Part: ${v("sName")}\n` +
+    `🚗 Car: ${v("sMake")} ${v("sModel")}\n` +
+    `📦 Condition: ${v("sCondition")}\n` +
+    `💵 Price: ${CONFIG.currency}${v("sPrice")}\n` +
+    `📍 City: ${v("sCity")}\n` +
+    `📱 Seller phone: ${v("sPhone")}\n` +
+    (v("sDesc") ? `📝 Details: ${v("sDesc")}\n` : "") +
+    `\nI'll send photos in this chat.`;
+  window.open(waLink(CONFIG.whatsappNumber, msg), "_blank");
+}
+
+/* ---------- Init ---------- */
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") { closeDetail(); closeSell(); }
+});
+
+function resetAll() {
+  document.getElementById("searchInput").value = "";
+  ["filterMake", "filterCategory", "filterCondition", "filterCity"].forEach(id => {
+    document.getElementById(id).value = "";
+  });
+  activeCategory = "";
+  renderCategories();
+  applyFilters();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+const generalWa = waLink(CONFIG.whatsappNumber, "Hello! I have a question about PartsLeb.");
+document.getElementById("headerWa").href = generalWa;
+document.getElementById("footerWa").href = generalWa;
+
+populateFilters();
+renderCategories();
+applyFilters();
+</script>
+</body>
+</html>
